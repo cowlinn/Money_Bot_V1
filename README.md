@@ -1,2 +1,7 @@
 # Money_Bot_V1
-We make the stocks go upppp
+
+
+We may go to the mon 1 dae
+
+
+
