@@ -51,7 +51,7 @@ def stock_eval(stock_name, investment_period, historical_range): # evaluate mean
     plt.ylabel('Frequency')
     plt.show()
     
-    return (mean["Close"], median["Close"], sd["Close"], Q1, Q3)
+    return (mean["Close"], median["Close"], sd["Close"], Q1, Q3, percentage_increase)
 
 def sdprop(stock_info):   # returns a reccomended buying ratio and resultant SD according to minimisation of SD
     sdrisk = []
@@ -176,6 +176,18 @@ def IQR_minimised(all_stocks, investment_period, historical_range):  # returns n
     mean = final_dist.mean()
     return(normratios, Q3["Close"], Q1["Close"], median["Close"], mean["Close"])
   
+    
+def SNP_compare(portfolio, SNP): # takes in the percentage gain from a given portfolio, compares it to the snp500 and gives a percent chance that you would have been better off buying the snp500
+    win_counter = 0
+    loss_counter = 0
+    compare = portfolio - SNP
+    for i in range(len(compare)):
+        if compare["Close"][i] >= 0:
+            win_counter += 1
+        else:
+            loss_counter += 1
+    win_percent = (win_counter/(win_counter + loss_counter))*100
+    return round(win_percent, 2)
 
 def nearest(items, pivot):
     return min(items, key=lambda x: abs(x - pivot))
@@ -195,7 +207,7 @@ def back_test(normratios, mean, median, SD, IQR, all_stocks, investment_period):
     ### DEVAX idk what to do here the datetime thing is insane
     return()
     
-    
+
     
     
     
@@ -209,13 +221,19 @@ def main():
     #tickers = yf.Tickers(numstock)
     all_stocks = numstock.split()
     stock_info = []
+    increase_dict = {}
+    
     for i in range(len(all_stocks)):
         info = stock_eval(all_stocks[i], investment_period, historical_range)
-        stock_info.append(info)
+        increase_dict[all_stocks[i]] = info[5]
+        stock_info.append(info[0:5])
     # stock info contains a list of lists which each contain the mean, median, SD, q1, q3 of a stock
-        
+    increase_dict["SPY"] = percentage_increase("SPY", investment_period, historical_range)
+    # print(increase_dict)
     if len(stock_info) == 1:
         print_info(all_stocks, investment_period, historical_range, stock_info)
+        win_percent = SNP_compare(increase_dict[all_stocks[0]], increase_dict["SPY"])
+        print("Buying this stock gives you a", win_percent, "% chance of beating the S&P500.\n")
         main()
         
     else:
@@ -242,7 +260,19 @@ def main():
         print("This portfolio should yield a percentage gain of", round(meangain, 2), "% on average.")
         print("This portfolio should yield a median percentage gain of", round(median, 2), "%.")
         print("The upper bound according to error propagation is ", round(high, 2), "% and the lower bound is ", round(low, 2), "%.")
-        print("Alternatively, you may judge the upper and lower bounds according to the IQR of the portfolio's percentage increases which are ", round(Q3, 2), "% and ", round(Q1, 2), "% respectively. \n")
+        print("Alternatively, you may judge the upper and lower bounds according to the IQR of the portfolio's percentage increases which are ", round(Q3, 2), "% and ", round(Q1, 2), "% respectively.")
+        sym_portfolio = 0
+        for i in range(len(all_stocks)):
+            portion = ratio[i]*increase_dict[all_stocks[i]]
+            sym_portfolio += portion
+        win_percent = SNP_compare(sym_portfolio, increase_dict["SPY"])
+        print("Buying in this ratio gives you a", win_percent, "% chance of beating the S&P500.\n")
+        plt.hist(sym_portfolio["Close"], bins=30)
+        plt.title('SD-based portfolio')
+        plt.xlabel('Percentage Increase')
+        plt.ylabel('Frequency')
+        plt.show()
+        
         
         #medhigh = median + 1.253*SD
         #medlow = median - 1.253*SD
@@ -254,9 +284,19 @@ def main():
         print("\n", all_stocks,"\n", IQRratio, "\n")
         print("This portfolio should yield a percentage gain of", round(IQR_min[4], 2), "% on average.")
         print("This portfolio should yield a median percentage gain of", round(IQR_min[3], 2), "%.")
-        print("The upper bound according to error propagation is ", round(Q3IQR, 2), "% and the lower bound is ", round(Q1IQR, 2), "%. \n")
+        print("The upper bound according to error propagation is ", round(Q3IQR, 2), "% and the lower bound is ", round(Q1IQR, 2), "%.")
         #print("Alternatively, you may judge the upper and lower according to the IQR of the portfolio's percentage increases which are ", round(Q3, 2), "% and ", round(Q1, 2), "% respectively. \n")
-
+        asym_portfolio = 0
+        for i in range(len(all_stocks)):
+            portion = IQRratio[i]*increase_dict[all_stocks[i]]
+            asym_portfolio += portion
+        IQRwin_percent = SNP_compare(asym_portfolio, increase_dict["SPY"])
+        print("Buying in this ratio gives you a", IQRwin_percent, "% chance of beating the S&P500.\n")
+        plt.hist(asym_portfolio["Close"], bins=30)
+        plt.title('Median-based portfolio')
+        plt.xlabel('Percentage Increase')
+        plt.ylabel('Frequency')
+        plt.show()
         #print(median)
         main()
 
