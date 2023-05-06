@@ -14,6 +14,8 @@ import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 
+auth = json.loads(open('Auth/auth.txt', 'r').read())
+
 class IBapi(EWrapper, EClient):
      def __init__(self):
          EClient.__init__(self, self) 
