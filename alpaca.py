@@ -39,20 +39,6 @@ apiKey13 = 'YPB0AWLC04BSYLCA'
 apiKey14 = 'IIDIQCUR0VQHF2K9'
 apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey10,apiKey11,apiKey12,apiKey13,apiKey14]
 
-############################################## Alpaca Authentication ######################################################################
-auth = json.loads(open('Auth/auth.txt', 'r').read())
-api = alpaca.REST(auth['ALPACA-API-KEY-ID'], auth['ALPACA-API-SECRET-KEY'], base_url='https://paper-api.alpaca.markets')
-tickers = open('Auth/test_tickers.txt', 'r').read()
-tickers = tickers.upper().split()
-global TICKERS 
-TICKERS = tickers
-
-# for ticker in TICKERS:    
-#     order_buy = api.submit_order(ticker, qty=1, side='buy')
-
-for p in api.list_positions():
-    print(p)
-
 ############################################## Telegram Bot - @monymoney_bot ######################################################################
 def send_tele_message(message):
     TOKEN = auth["TOKEN"]
