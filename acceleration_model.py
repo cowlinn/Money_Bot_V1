@@ -7,6 +7,10 @@ from scipy.fft import rfft, rfftfreq, irfft, fft, ifft, fftfreq
 import math
 #import plotly.express as px
 
+# idea 1: use 3rd order derivative to estimate 2nd order and 1st order by assuming 3rd order is approx constant (does not work)
+# idea 2: use fourier transform to approximate a function for the price data (can also do for higher order derivatives) 
+# extrapolate for future time coordinates (devax)
+
 stock_name = "SPY"
 data_period = "5d"
 resolution = "15m"
