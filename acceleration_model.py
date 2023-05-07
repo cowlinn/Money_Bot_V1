@@ -10,6 +10,7 @@ import math
 # idea 1: use 3rd order derivative to estimate 2nd order and 1st order by assuming 3rd order is approx constant (does not work)
 # idea 2: use fourier transform to approximate a function for the price data (can also do for higher order derivatives) 
 # extrapolate for future time coordinates (devax)
+# idea 3: take weighted rolling average of jerk
 
 stock_name = "SPY"
 data_period = "5d"
