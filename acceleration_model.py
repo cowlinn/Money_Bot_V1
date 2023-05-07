@@ -11,6 +11,7 @@ import math
 # idea 2: use fourier transform to approximate a function for the price data (can also do for higher order derivatives) 
 # extrapolate for future time coordinates (devax)
 # idea 3: take weighted rolling average of jerk
+# idea 4: take average absolute values of jerk to find the approximate amplitude
 
 stock_name = "SPY"
 data_period = "5d"
