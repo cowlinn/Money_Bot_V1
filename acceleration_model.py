@@ -43,6 +43,27 @@ hist["velocity"] = velocity
 hist["acceleration"] = acceleration
 hist["jerk"] = jerk
 
+p_moving_average = hist["Close"].rolling(4).mean()
+plt.plot(hist['time_index'], p_moving_average)
+plt.plot(hist['time_index'], hist['Close'])
+plt.show()
+
+v_moving_average = hist["velocity"].rolling(5).mean()
+a_moving_average = hist["acceleration"].rolling(5).mean()
+j_moving_average = hist["jerk"].rolling(5).mean()
+
+plt.plot(hist['time_index'], v_moving_average)
+plt.plot(hist['time_index'], hist['velocity'])
+plt.show()
+plt.plot(hist['time_index'], a_moving_average)
+plt.plot(hist['time_index'], hist['acceleration'])
+plt.show()
+plt.plot(hist['time_index'], j_moving_average)
+plt.plot(hist['time_index'], hist['jerk'])
+plt.show()
+
+
+
 jyf = rfft(jerk.dropna().values)
 jxf = rfftfreq(len(hist.index)-3, 1)
 #plt.plot(jxf, np.abs(jyf))
@@ -56,6 +77,7 @@ plt.subplot(2,1,2)
 plt.plot(hist['time_index'], hist["jerk"])
 plt.title("original")
 plt.show()
+
 
 ayf = rfft(acceleration.dropna().values)
 axf = rfftfreq(len(hist.index)-2, 1)
@@ -101,35 +123,35 @@ plt.show()
 
 
 # find Cn this is wrongly implemented
-def C(n, x, fx):
-    It = 0
-    T = 2*math.pi
-    for i in range(len(fx)):
-        dI = fx[i]*(math.e)**((2j*math.pi*n*x[i])/T)
-        It += dI
-    #print(It)
-    return It/T
-fourier_coeff = np.empty(len(new_jyf))
-fourier_coeff[fourier_coeff<1e-15] = 0
-for i in range(20):
-    fourier_coeff[i] = C(i, hist['time_index'], new_jyf)
-fourier_coeff[np.abs(fourier_coeff)<1e-15] = 0
-fourier_trans = np.fft.fft(new_jyf)
-fourier_trans[np.abs(fourier_trans)<1e-14] = 0
+# def C(n, x, fx):
+#     It = 0
+#     T = 2*math.pi
+#     for i in range(len(fx)):
+#         dI = fx[i]*(math.e)**((2j*math.pi*n*x[i])/T)
+#         It += dI
+#     #print(It)
+#     return It/T
+# fourier_coeff = np.empty(len(new_jyf))
+# fourier_coeff[fourier_coeff<1e-15] = 0
+# for i in range(20):
+#     fourier_coeff[i] = C(i, hist['time_index'], new_jyf)
+# fourier_coeff[np.abs(fourier_coeff)<1e-15] = 0
+# fourier_trans = np.fft.fft(new_jyf)
+# fourier_trans[np.abs(fourier_trans)<1e-14] = 0
 # approximating up to nth term, find future values of y. x0 is historical data, x is where we want to predict until
-def f(x0, fx, x, n): #bad code
-    func = 0
-    T = 2*math.pi
-    for a in range(len(x)):
-        for i in range(n):
-            dI = C(i, x0, fx)*(math.e)**((2j*math.pi*i*x[a])/T)
-            func += dI
-    return func
+# def f(x0, fx, x, n): #bad code
+#     func = 0
+#     T = 2*math.pi
+#     for a in range(len(x)):
+#         for i in range(n):
+#             dI = C(i, x0, fx)*(math.e)**((2j*math.pi*i*x[a])/T)
+#             func += dI
+#     return func
 
-fitted = np.empty(len(new_jyf))
-for t in range(len(new_jyf)):
-    fitted[t] = (f(hist["time_index"], new_jyf, np.array(list(range(-129,1))), 3))
-plt.plot(hist['time_index'][4:], np.abs(fitted))
+# fitted = np.empty(len(new_jyf))
+# for t in range(len(new_jyf)):
+#     fitted[t] = (f(hist["time_index"], new_jyf, np.array(list(range(-129,1))), 3))
+# plt.plot(hist['time_index'][4:], np.abs(fitted))
 
 
 
