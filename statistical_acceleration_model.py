@@ -22,6 +22,7 @@ import math
 # from here, we can make trades based on the forecasted price in the next minute (or maybe 15 minutes)
 # It is likely that this model will only work for very high resolution graphs (1m to 15m)
 # note: Valid intervals: [1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo]
+
 stock_name = "SPY"
 data_period = "5d"
 resolution = "1m"

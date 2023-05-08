@@ -99,7 +99,7 @@ def booldist(x):
         price_dist[target] = 1 - boolprob(x, target)
     return price_dist, str_price_dist
 
-def main(stock_name, data_period, resolution, target_price, time_interval, shift):
+def main(stock_name, data_period, resolution, target_price, shift):
     # stock_name = "SPY"
     # data_period = "1y"
     # resolution = "1d"
@@ -189,14 +189,16 @@ def main(stock_name, data_period, resolution, target_price, time_interval, shift
 stock_name = "SPY"
 data_period = "1y"
 resolution = "1d"
-target_price = 411  # in absolute price, can be a float
+target_price = 411  # in absolute price, can be a float. target price will most likely be the option strike price.
 time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
 shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
-# formula for 1d resolution and 1 day time interval is int(time_interval)
+# formula for 1d resolution and for all integer time interval is int(time_interval)
 # formula for 1h resolution and 1 day time interval is int(time_interval*6.5)
 # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
 # formula for 1m resolution and 1 day time interval is int(time_interval*6.5*60)
-main(stock_name, data_period, resolution, target_price, time_interval, shift)
+main(stock_name, data_period, resolution, target_price, shift)
+
+
 
 # preliminary predictions to check on 9/5/2023
 # Probability of reaching target price of 415 for SPY by the end of 1 day(s) is 0.371
