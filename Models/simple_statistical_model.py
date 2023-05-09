@@ -180,11 +180,14 @@ def main(stock_name, data_period, resolution, target_price, shift):
     else:
         target_prob = boolprob(acceleration_corrected_percentage_increase, target_percentage_increase)
     expected_price = ((acceleration_corrected_percentage_increase.mean())/100+1)*latest_price
-    upper_bound = expected_price + ((acceleration_corrected_percentage_increase.std())/100)*latest_price
-    lower_bound = expected_price - ((acceleration_corrected_percentage_increase.std())/100)*latest_price
-    # there is a 68% chance price falls within upper and lower bound
-    print("Probability of reaching target price of", target_price, "for", stock_name, "by the end of", time_interval, "day(s) is", round(target_prob, 3))
-    print("The expected price is", round(expected_price, 3), "with upper bound of", round(upper_bound, 3), "and lower bound of", round(lower_bound, 3))
+    upper_bound = expected_price + ((acceleration_corrected_percentage_increase.std())/math.sqrt(len(percentage_increase))/100)*latest_price
+    lower_bound = expected_price - ((acceleration_corrected_percentage_increase.std())/math.sqrt(len(percentage_increase))/100)*latest_price
+    SD_upper = expected_price + ((acceleration_corrected_percentage_increase.std())/100)*latest_price
+    SD_lower = expected_price - ((acceleration_corrected_percentage_increase.std())/100)*latest_price
+    print("\nProbability of reaching target price of", target_price, "for", stock_name, "by the end of", time_interval, "trading day(s) is", round(target_prob, 3), "\n")
+    print("The expected price is", round(expected_price, 3))
+    print("Based on SD, the upper bound is", round(SD_upper, 3), "and the lower bound is", round(SD_lower, 3))
+    print("Based on standard error, the upper bound is", round(upper_bound, 3), "and the lower bound is", round(lower_bound, 3))
     return
 stock_name = "SPY"
 data_period = "1y"
@@ -197,7 +200,6 @@ shift = int(time_interval) # converts time interval into however many 15 min blo
 # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
 # formula for 1m resolution and 1 day time interval is int(time_interval*6.5*60)
 main(stock_name, data_period, resolution, target_price, shift)
-
 
 
 # preliminary predictions to check on 9/5/2023
@@ -218,3 +220,11 @@ main(stock_name, data_period, resolution, target_price, shift)
 
 # Probability of reaching target price of 175 for AAPL by the end of 1 day(s) is 0.367
 # The expected price is 173.736 with upper bound of 177.395 and lower bound of 170.076
+#
+# ALL predictions came true within upper/lower bound but I think this just means the bound is too big
+# The upper and lower bounds really just mean that there is a 68% chance price falls within that boundary
+# On a side note, the price did not fluctuate outside of the upper/lower bounds for SD
+# (this can be checked in backtesting using the high/low column of historical data from yfinance)
+# using standard (dividing SD by sqrt(n)) gives a range much closer to the actual high/low
+# however, some measurements will inevitably fall outside of this range
+# when using standard deviation, there is a 68% chance price falls within upper and lower bound
