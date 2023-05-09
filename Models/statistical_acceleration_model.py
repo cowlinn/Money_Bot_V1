@@ -2,8 +2,6 @@ import yfinance as yf
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.signal import butter, lfilter, freqz
-from scipy.fft import rfft, rfftfreq, irfft, fft, ifft, fftfreq
 import math
 
 # STATISTICAL ACCELERATION MODEL
