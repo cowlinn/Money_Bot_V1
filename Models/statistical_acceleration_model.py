@@ -148,7 +148,8 @@ main(stock_name, data_period, resolution, shift)
 
 ############################################ NOTES ############################################
 # this relatively simple model only looks at the most recent 2 data points to predict the next one
-# the only thing taking in historical data is RMSE
+# I also tried factoring in the acceleration by looking at the last nweight acceleration values and taking their weighted average, biased towards recent acceleration
+# the only thing taking in historical data is RMSE and the last nweight coordinates of acceleration
 # increasing the data period is likely to increase RMSE as it just gives more points of comparison for RMSE
 # that being said, it is not a good idea to attempt to simply minimise RMSE as this is probably overfitting
 # ultimately we want a reasonable margin of error to make good trading decisions so RMSE is not everything
