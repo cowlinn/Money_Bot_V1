@@ -107,7 +107,7 @@ def main(stock_name, data_period, resolution, target_price, shift):
     # time_interval = 1 # time interval in days
     # shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
     # formula for 1d resolution and 1 day time interval is int(time_interval)
-    # formula for 1h resolution and 1 day time interval is int(time_interval*6.5)
+    # formula for 1h resolution and 1 day time interval is int(time_interval*7)
     # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
     # formula for 1m resolution and 1 day time interval is int(time_interval*6.5*60)
     ####################### CHANGE CONVERSION FORMULA IF CHANGING RESOLUTION ############################

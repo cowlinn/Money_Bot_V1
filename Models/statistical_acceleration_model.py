@@ -64,6 +64,7 @@ def predict(percentage_increase):
 
     return next_percentage_increase, acceleration_next_percentage_increase, nweights
 
+# badly coded RMSE function
 def RMSE(percentage_increase):
     percentage_increase_lst = percentage_increase.tolist()
     sumresidual = 0
@@ -85,6 +86,8 @@ def RMSE(percentage_increase):
         asumresidual += residual_sq
     aRMSE = math.sqrt(asumresidual/(len(percentage_increase)-2))
     return RMSE, aRMSE
+# Ideally, the RMSE function would take in all historical data and make a prediction using the same amount of data as the main prediction
+# this prediction is what the residuals should be calculated based on
 
 def main(stock_name, data_period, resolution, shift):
     stock = yf.Ticker(stock_name)
@@ -135,7 +138,7 @@ resolution = "1m"
 time_interval = 1/(6.5*4) # we want to know what the price in 15min wil be
 shift = int(time_interval*6.5*60) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
 # formula for 1d resolution and for all integer time interval is int(time_interval)
-# formula for 1h resolution and 1 day time interval is int(time_interval*6.5)
+# formula for 1h resolution and 1 day time interval is int(time_interval*7)
 # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
 # formula for 2m resolution and 1 day time interval is int(time_interval*6.5*30)
 # formula for 1m resolution and 1 day time interval is int(time_interval*6.5*60)
@@ -155,7 +158,10 @@ main(stock_name, data_period, resolution, shift)
 # ultimately we want a reasonable margin of error to make good trading decisions so RMSE is not everything
 ###############################################################################################
 
+### check predictions for SPY on 12/5/2023
+# Without taking acceleration into account, the predicted price in 15 min is 412.32 with an upper bound of 412.665 and a lower bound of 411.975 
 
+# Taking acceleration into account, the predicted price in 15 min is 412.354 with an upper bound of 412.699 and a lower bound of 412.009
 
 
 
