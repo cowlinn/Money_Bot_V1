@@ -35,19 +35,64 @@ import random
 #     return y          
 #
 # This works decently well at finding clusters, however, the use of an arbitrary threshold means that each derivative requres a new threshold
+#   # I ended up using i > x.mean()
 # Also, we have no way of discerning the magnitude of each cluster from the transformed data
 # but again, a separate function could be used for that
+# spikes (volatility clusters) in higher order derivative signal volatility in the price
+#   # for further refinements, it might be worth looking at the direction (by taking the absolute value in the clustering func, we do not have directional data)
+#   # thus, it is probably a good idea to combine the clustering data with the percentage increase data again to predict direction on top of magnitude
+#   # alternatively, we could use the pmcheck function to give a probability of when direction is likely to reverse in higher order derivatives
+#   # then work backwards to find price change magnitude + direction
 
+
+# so far what are the things that define a given set of data?
+# 1. pmcheck - how often does the value of the series cross the zero line?  (direction of higher oder derivatives)
+    # strictly speaking, what is the probability that the next value in the series has a flipped signed from the latest value?
+# 2. clusters - how are volatility clusters distributed and what is their magnitude?  (magnitude of higher order derivatives)
+    # currently, I have two models that are meant to trade either within or outside of clusters
+    # might be worth looking at models that predict prices at cluster boundaries
+    # for now, we can say that any data point with magnitude less than the average magnitude is not in a volatile cluster
+# 3. cluster frequency and patterns (for this we probably need to look at a different timescale and apply it to small scale)
+    # no idea how to handle this yet
+    
+    
+# model structure so far:
+# - working on percentage_pop
+# 1. call pmcheck() to find the probability of direction changes
+# 2. 
 
 def derivative(x):
     return x - x.shift()
 
+def pmcheck(x): # check how often the values of a series oscillate between positve and negative
+    if isinstance(x, list):
+        x = pd.Series(x).dropna()
+        x_lst = x.tolist()
+    x_lst = x.dropna().tolist()
+    right = 0
+    wrong = 0
+    for i in range(len(x_lst)-1):
+        if x_lst[i]>0 and x_lst[i+1]<0:
+            right += 1
+        elif x_lst[i]<0 and x_lst[i+1]>0:
+            right +=1
+        else:
+            wrong +=1
+    return right/(right+wrong)
+
+def weight(x): # weight function. x is time coordinate.
+# the further away a data point is in from the current time coord, the larger the x value
+# x is in integers starting from x = 0 being the latest trade time
+    w = 1/4*(3*math.exp(-(0.1*x)**2) + 1/(0.1*x+1))
+    return w
+
 # cluster detection
 def f(x):
-    x = abs(x)
+    x = abs(x).dropna()
+    x_lst = x.tolist()
     y = []
     for i in x:
-        if i > 1:
+        if i > x.mean():
             i = 1
         else:
             i = 0
@@ -58,19 +103,39 @@ def f(x):
     for i in range(1, (len(y)-1)):
         if y[i] == 1 and y[i+1] == 0 and y[i-1] == 0:
             y[i] = 0
+    for i in range(1, (len(y))):
+        if x_lst[i] > (x.mean() + x.std()):   # identify different levels of volatility
+            y[i] += 1
+    for i in range(1, (len(y))):
+        if x_lst[i] > (x.mean() + 2*x.std()):
+            y[i] += 1
+    for i in range(1, (len(y))):
+        if x_lst[i] > (x.mean() + 3*x.std()):
+            y[i] += 1
+    for i in range(1, (len(y))):
+        if x_lst[i] > (x.mean() + 4*x.std()):  # identify the max points if we want to scale the data later
+            y[i] += 1
+    
+    y = pd.Series(y).rolling(4).mean()
+    # now take rolling average?
+    # this kind of helps to smooth out the cluster graph but it doesn't really help to identify cluster boundaries?
+    
     return y            
 
 def shape_visual(x, name): # plot the time dependence of a variable in one plot and the identified clusters in another plot
+    y = f(x)
     plt.subplot(2,1,1)
     plt.plot(range(len(x)), (x))
     name = name + ' time dependence'
     plt.title(name)
+    plt.grid()
     plt.subplot(2,1,2)
-    plt.plot(range(len(x)), f(x))
+    plt.plot(range(len(y)), y)
     # f() is some function that tries to identify where clusters are located
     clust_name = "cluster detection"
     plt.title(clust_name)
     plt.tight_layout(pad=1.0)
+    plt.grid()
     plt.show()
 
 stock_name = "SPY"
