@@ -210,10 +210,10 @@ def main(stock_name, data_period, resolution, shift):
     print("The predicted price in", time_interval, "day(s) is", round(predicted_price, 3), "with an upper bound of", round(pred_upper, 3), "and a lower bound of", round(pred_lower, 3), "\n")
         
 stock_name = "SPY"
-data_period = "6d"
+data_period = "8d"
 resolution = "15m"
-time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
-shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
+time_interval = 3 # time interval from today in days (when do we want to hit the target price?)
+shift = int(time_interval*6.5*4) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
 # formula for 1d resolution and for all integer time interval is int(time_interval)
 # formula for 1h resolution and integer day time interval is int(time_interval*7)
 # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
