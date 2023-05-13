@@ -37,6 +37,7 @@ import random
 # This works decently well at finding clusters, however, the use of an arbitrary threshold means that each derivative requres a new threshold
 #   # I ended up using i > x.mean()
 # Also, we have no way of discerning the magnitude of each cluster from the transformed data
+    # I fixed this by quantifying how far a given spike is from the mean using the SD
 # but again, a separate function could be used for that
 # spikes (volatility clusters) in higher order derivative signal volatility in the price
 #   # for further refinements, it might be worth looking at the direction (by taking the absolute value in the clustering func, we do not have directional data)
@@ -55,7 +56,12 @@ import random
 # 3. cluster frequency and patterns (for this we probably need to look at a different timescale and apply it to small scale)
     # no idea how to handle this yet
     
-    
+# by identifying when we are in a volatility cluster, we can choose different models to apply to predict price movement
+# or we can have some tolerance level for volatility (for example if cluster level > 1, stop trading or start trading, depending on strategy)
+
+# can we synthesise financial data based on points 1 2 and 3 alone? (plus mean and SD of the real data)
+
+
 # model structure so far:
 # - working on percentage_pop
 # 1. call pmcheck() to find the probability of direction changes
@@ -63,6 +69,9 @@ import random
 
 def derivative(x):
     return x - x.shift()
+
+def probability(probability):
+    return random.random() < probability
 
 def pmcheck(x): # check how often the values of a series oscillate between positve and negative
     if isinstance(x, list):
@@ -80,13 +89,10 @@ def pmcheck(x): # check how often the values of a series oscillate between posit
             wrong +=1
     return right/(right+wrong)
 
-def weight(x): # weight function. x is time coordinate.
-# the further away a data point is in from the current time coord, the larger the x value
-# x is in integers starting from x = 0 being the latest trade time
-    w = 1/4*(3*math.exp(-(0.1*x)**2) + 1/(0.1*x+1))
-    return w
 
 # cluster detection
+# NOTE: for high resolution data (1m or 2m granularity), this function is nearly useless as it picks up on noise as actual volatility
+# this only works well for 5min data onwards, though it works best for 15m imo
 def f(x):
     x = abs(x).dropna()
     x_lst = x.tolist()
@@ -97,33 +103,110 @@ def f(x):
         else:
             i = 0
         y.append(i)
+
     for i in range(1, (len(y)-1)):
-        if y[i] == 0 and y[i+1] == 1 and y[i-1] == 1:
-            y[i] = 1
+        magnitude = 1
+        while x_lst[i] > (x.mean() + magnitude*x.std()):
+            y[i] += 1
+            magnitude +=1
     for i in range(1, (len(y)-1)):
-        if y[i] == 1 and y[i+1] == 0 and y[i-1] == 0:
+        if y[i] == 0 and y[i+1] == y[i-1]:
+            y[i] = y[i-1]
+    for i in range(1, (len(y)-1)):
+        if y[i] != 0 and y[i+1] == 0 and y[i-1] == 0:
             y[i] = 0
-    for i in range(1, (len(y))):
-        if x_lst[i] > (x.mean() + x.std()):   # identify different levels of volatility
-            y[i] += 1
-    for i in range(1, (len(y))):
-        if x_lst[i] > (x.mean() + 2*x.std()):
-            y[i] += 1
-    for i in range(1, (len(y))):
-        if x_lst[i] > (x.mean() + 3*x.std()):
-            y[i] += 1
-    for i in range(1, (len(y))):
-        if x_lst[i] > (x.mean() + 4*x.std()):  # identify the max points if we want to scale the data later
-            y[i] += 1
-    
-    y = pd.Series(y).rolling(4).mean()
+    rolling_window = 4
+    y_smooth = pd.Series(y).rolling(rolling_window).mean()
+    # for i in range(rolling_window-1):
+    #     y[i] = np.nan
+    y_chunky = pd.Series(y)
     # now take rolling average?
     # this kind of helps to smooth out the cluster graph but it doesn't really help to identify cluster boundaries?
-    
-    return y            
+    # y is the cluster data
+    return y_smooth, y_chunky
+# next step from here is to find how often different magnitudes occur? (for point 3.)
+# is it more useful to use the step-wise data rather than the averaged data for this? 
+# I mean I could use the local maxima of the y data and place clusters there, and that will be their magnitude and freq?
+# even if a cluster is HUGE, it still is just one cluster. If a cluster has more than one peak (>1 local maxima within cluster)
+# it often looks like a superposition of two  or moreclusters so I should count that as two
+
+# first, find probability of peak occuring
+# then, given that a point is a peak centre, what is its magnitude?
+# also we should characterise the width of the peaks
+
+# takes in cluster data (f(x))
+def count_peaks(x, texture):  # counts the number of local maxima in a given set of cluster data
+    if texture == 'smooth':
+        texture = 0
+    elif texture == 'rough':
+        texture = 1
+    else:
+        print("Please specify texture")
+        return
+    peak_count = 0
+    x_lst = x[texture].dropna().tolist()
+    peak_coords = []
+    for i in range(1, (len(x_lst)-1)):
+        if (x_lst[i] > x_lst[i-1]) and (x_lst[i] >= x_lst[i+1]):
+            peak_count +=1
+            peak_coords.append(i)
+            # print(i) # peak locations
+    #print(peak_coords)
+    return peak_count, peak_coords
+
+# takes in cluster data (f(x))
+def rough_peak_prob(x):   # finds the probability that a given point in cluster data is a peak-center
+    x_lst = x[1].dropna().tolist()
+    peak_count = count_peaks(x, 'rough')[0]
+    peak_prob = peak_count/len(x_lst)
+    return peak_prob  # probability of a given coordinate being a peak
+
+# takes in cluster data (f(x))
+def rough_magnitude_prob(x):
+    # find max magnitude in terms of no. of SD away from the mean magnitude
+    max_magnitude = x[1].max()
+    mag_list = list(range(1, max_magnitude+1))   # list of all possible magnitudes
+    # mag_freq_list = [0]*max_magnitude
+    # total_samples = len(x[1])
+    peak_data = count_peaks(x, 'rough')
+    peak_coords = peak_data[1]
+    num_peaks = peak_data[0]
+    mag_dict = {}
+    for i in mag_list:
+        counter = 0
+        for n in peak_coords:
+            if x[1][n] == i:
+                counter += 1
+        mag_prob = counter/num_peaks
+        mag_dict[i] = mag_prob
+    print(mag_dict)
+    return mag_dict   # returns a dictionary with keys being magnitude (how many SD away from mean) and values being probability
+# what this means is that if we know a peak is here, this distribution describes what its magnitude will be
+
+# takes in some set of data (like percentage_pop)
+# and tries to synthesize data that looks similar and behaves the same way statistically
+def synthesise(x):
+    domain = [0]*len(x)
+    magnitude_distribution = rough_magnitude_prob(f(x))
+    magnitude_distribution_lst = []
+    # convert from dictionary to a list
+    for i in magnitude_distribution:
+        magnitude_distribution_lst.append(magnitude_distribution[i])
+    # list of all likely magnitudes
+    magnitude_lst = list(range(1, len(magnitude_distribution)+1))
+    peakProbability = rough_peak_prob(f(x))
+    # distribute peaks
+    for i in range(len(x)):
+        if probability(peakProbability):
+            domain[i] = 1
+    # apply magnitude distribution
+    for i in range(len(x)):
+        if domain[i] == 1:  # if peak, apply distribution to decide its magnitude
+            domain[i] = random.choices(magnitude_lst, weights=magnitude_distribution_lst, k=1)[0]
+    return pd.Series(domain)
 
 def shape_visual(x, name): # plot the time dependence of a variable in one plot and the identified clusters in another plot
-    y = f(x)
+    y = f(x)[0]   # [0] is smoothed data, [1] is chunky data
     plt.subplot(2,1,1)
     plt.plot(range(len(x)), (x))
     name = name + ' time dependence'
@@ -138,8 +221,23 @@ def shape_visual(x, name): # plot the time dependence of a variable in one plot 
     plt.grid()
     plt.show()
 
+def shape_synth(x, name):
+    y = f(x)[1]   # [0] is smoothed data, [1] is chunky data
+    plt.subplot(2,1,1)
+    plt.plot(range(len(y)), (y))
+    name = name + ' real data'
+    plt.title(name)
+    plt.grid()
+    plt.subplot(2,1,2)
+    z = synthesise(x)
+    plt.plot(range(len(z)), z)
+    clust_name = "synthesised data"
+    plt.title(clust_name)
+    plt.tight_layout(pad=1.0)
+    plt.grid()
+    plt.show()
 stock_name = "SPY"
-data_period = "6d"
+data_period = "10d"
 resolution = "15m"
 time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
 shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
@@ -173,18 +271,28 @@ percentage_sixth = derivative(percentage_pop)
 percentage_seventh = derivative(percentage_sixth)
 percentage_eighth = derivative(percentage_seventh)
 
+shape_visual(percentage_pop, "percentage_pop")
+shape_synth(percentage_pop, "percentage_pop")
 
 
 
 
+# plt.plot(range(len(percentage_pop)), abs(percentage_pop))
+# plt.grid()
+# plt.show()
 
-
-plt.plot(range(len(percentage_pop)), abs(percentage_pop))
-plt.grid()
-plt.show()
-
-
-
-
+# I was testing the random python library
+# seems like there can be a couple of percent difference even at 1000 trials
+def prob_check(x):
+    truecounter = 0
+    falsecounter = 0
+    for i in range(1000):
+        if probability(rough_peak_prob(f(x))):
+            truecounter+=1
+        else:
+            falsecounter +=1
+    tested_prob = truecounter/(truecounter+falsecounter)
+    print("Expected probability is", rough_peak_prob(f(x)), "\ntested probability is", tested_prob)
+    return tested_prob
 
 

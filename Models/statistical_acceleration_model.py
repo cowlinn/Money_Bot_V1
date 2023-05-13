@@ -132,7 +132,7 @@ def main(stock_name, data_period, resolution, shift):
         print("Taking acceleration into account, the predicted price in", shift, "min is", round(a_predicted_price, 3), "with an upper bound of", round(a_pred_upper, 3), "and a lower bound of", round(a_pred_lower, 3))
 
     return
-stock_name = "SPY"
+stock_name = "AAPL"
 data_period = "5d"
 resolution = "1m"
 time_interval = 1/(6.5*4) # we want to know what the price in 15min wil be
@@ -158,11 +158,9 @@ main(stock_name, data_period, resolution, shift)
 # ultimately we want a reasonable margin of error to make good trading decisions so RMSE is not everything
 ###############################################################################################
 
-### check predictions for SPY on 12/5/2023
-# Without taking acceleration into account, the predicted price in 15 min is 412.32 with an upper bound of 412.665 and a lower bound of 411.975 
+# Without taking acceleration into account, the predicted price in 15 min is 411.39 with an upper bound of 411.689 and a lower bound of 411.092 
 
-# Taking acceleration into account, the predicted price in 15 min is 412.354 with an upper bound of 412.699 and a lower bound of 412.009
+# Taking acceleration into account, the predicted price in 15 min is 411.413 with an upper bound of 411.712 and a lower bound of 411.115
 
-
-
+# statistical acceleration is better than weighted mdoel for short time frams like 15min
 

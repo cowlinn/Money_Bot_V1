@@ -38,6 +38,7 @@ import random
 # it also brings us closer to being able to accurately describe the statistical behaviour of a given security
 # upon further testing, it seems that we should always flip the value of the weighted average as compared to the previous data point
 # this is to avoid some ridiculous result from occuring
+# also, the probabilities just work out better if we flip every time
 # because of that, we just have to make sure the threshold for probability of flipping is reasonably high
 
 # I'm not sure why, but this model doesn't perform that well on SPY
@@ -209,11 +210,11 @@ def main(stock_name, data_period, resolution, shift):
     pred_lower = predicted_price - (error/100)*latest_price
     print("The predicted price in", time_interval, "day(s) is", round(predicted_price, 3), "with an upper bound of", round(pred_upper, 3), "and a lower bound of", round(pred_lower, 3), "\n")
         
-stock_name = "SPY"
+stock_name = "AAPL"
 data_period = "8d"
 resolution = "15m"
-time_interval = 3 # time interval from today in days (when do we want to hit the target price?)
-shift = int(time_interval*6.5*4) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
+time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
+shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
 # formula for 1d resolution and for all integer time interval is int(time_interval)
 # formula for 1h resolution and integer day time interval is int(time_interval*7)
 # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
