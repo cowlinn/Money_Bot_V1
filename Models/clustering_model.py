@@ -130,10 +130,20 @@ def f(x):
 # even if a cluster is HUGE, it still is just one cluster. If a cluster has more than one peak (>1 local maxima within cluster)
 # it often looks like a superposition of two  or moreclusters so I should count that as two
 
-# first, find probability of peak occuring
-# then, given that a point is a peak centre, what is its magnitude?
-# also we should characterise the width of the peaks
-
+# first, find probability of peak occuring (done)
+# then, given that a point is a peak centre, what is its magnitude? (done)
+# also we should characterise the width of the peaks (this is the next step)
+    # a note on the peak widths:
+        # even in step-wise data (rough), the peaks still increase in a gradient with varying speeds
+        # in general, shorter peaks are wider and taller peaks are narrower 
+        # gotta find some way to quantify this width
+        # also, they are usually (but not always) symmetric
+        # when two or more peaks have widths that encroach upon each other, it doesn't look like a proper superposition
+        # it looks more like the overlapping parts just have the same value (no need to add up the amplitudes)
+        # lastly, the top of the peaks themselves also have different widths that we need to characterise
+        # these tops may be somehow correlated with the width of the entire structer
+        # we now need to figure out how to quantify the statistical behaviour of these widths
+        # this will allow us to generalise our characterisation to data for any stock, across any time frame, with any granularity
 # takes in cluster data (f(x))
 def count_peaks(x, texture):  # counts the number of local maxima in a given set of cluster data
     if texture == 'smooth':
@@ -179,7 +189,7 @@ def rough_magnitude_prob(x):
                 counter += 1
         mag_prob = counter/num_peaks
         mag_dict[i] = mag_prob
-    print(mag_dict)
+    #print(mag_dict)
     return mag_dict   # returns a dictionary with keys being magnitude (how many SD away from mean) and values being probability
 # what this means is that if we know a peak is here, this distribution describes what its magnitude will be
 
@@ -204,6 +214,9 @@ def synthesise(x):
         if domain[i] == 1:  # if peak, apply distribution to decide its magnitude
             domain[i] = random.choices(magnitude_lst, weights=magnitude_distribution_lst, k=1)[0]
     return pd.Series(domain)
+# remarks on synthesised data:
+    # the distribution looks right, but the peak widths probably need more characterising before we can start smoothing with rolling ave
+
 
 def shape_visual(x, name): # plot the time dependence of a variable in one plot and the identified clusters in another plot
     y = f(x)[0]   # [0] is smoothed data, [1] is chunky data
