@@ -46,6 +46,15 @@ import random
 # the model just spits out some unreasonably large price movement
 # also note that RMSE is a bit high for now bc I suck at coding
 ######################################################################################################
+
+######################################################################################################
+## Constants ##
+AAPL = "AAPL"
+SnP_500 = "SPY"
+eight_days = "8d"
+two_months = "2mo"
+default_res = "[1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo]"
+
 def derivative(x):
     return x - x.shift()
 
@@ -209,10 +218,11 @@ def main(stock_name, data_period, resolution, shift):
     pred_upper = predicted_price + (error/100)*latest_price
     pred_lower = predicted_price - (error/100)*latest_price
     print("The predicted price in", time_interval, "day(s) is", round(predicted_price, 3), "with an upper bound of", round(pred_upper, 3), "and a lower bound of", round(pred_lower, 3), "\n")
-        
-stock_name = "AAPL"
-data_period = "8d"
-resolution = "15m"
+
+
+stock_name = input(f"Choose your stock: Format is the ticker name, e:g {AAPL} or {SnP_500}")
+data_period = input(f"Choose your data_preiod --> e.g: {eight_days} for 8 days or even {two_months} for 2 months")                    
+resolution = input(f"Choose your resolution: there are only these to choose from {default_res}")
 time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
 shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
 # formula for 1d resolution and for all integer time interval is int(time_interval)
