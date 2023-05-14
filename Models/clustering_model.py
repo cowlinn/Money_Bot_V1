@@ -65,7 +65,7 @@ import random
 # predictive model structure so far:
 # - working on percentage_pop
 # 1. call pmcheck() to find the probability of direction changes
-# 2. find relavant probabilites, mean and SD to describe higher order derivative data
+# 2. find relavant probabilities, mean and SD to describe higher order derivative data
 # 3. based on probabilities and pmcheck(), predict next change in higher order derivative (in the form of a probability distribution)
 # 4. express the probability distribution in terms of price changes
 
@@ -365,7 +365,7 @@ def synthesise(x):
     # by observation, I noticed each step away from the peak's top had the effect of approximately halving the value
     # and some peaks had longer tails, while others had no tails so I added some probabilistic factors in the synthesise() function to simulate this
 #
-# the synthesis function basically applies all 3 points by measuring the key probabilites from the actual data
+# the synthesis function basically applies all 3 points by measuring the key probabilities from the actual data
 # it then applies some spread (that can be changed manually if desired) 
 # We end up with a set of fake data that both looks visually similar and behaves statistically identically to the original data
 #
@@ -416,6 +416,7 @@ def shape_visual(x, name): # plot the time dependence of a variable in one plot 
     plt.grid()
     plt.show()
 
+# synthesise rough data and compare with real rough data
 def shape_synth(x, name):
     y = f(x)[1]   # [0] is smoothed data, [1] is chunky data
     max_y = y.max()
@@ -435,6 +436,7 @@ def shape_synth(x, name):
     plt.ylim(0, max_y+0.25)
     plt.show()
 
+# synthesise rough data, smooth it and compare with real smooth data
 def smooth_shape_synth(x, name):
     complete_y_data = f(x)
     y = complete_y_data[0]   # [0] is smoothed data, [1] is chunky data
