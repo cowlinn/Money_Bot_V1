@@ -62,10 +62,12 @@ import random
 # can we synthesise financial data based on points 1 2 and 3 alone? (plus mean and SD of the real data)
 
 
-# model structure so far:
+# predictive model structure so far:
 # - working on percentage_pop
 # 1. call pmcheck() to find the probability of direction changes
-# 2. 
+# 2. find relavant probabilites, mean and SD to describe higher order derivative data
+# 3. based on probabilities and pmcheck(), predict next change in higher order derivative (in the form of a probability distribution)
+# 4. express the probability distribution in terms of price changes
 
 def derivative(x):
     return x - x.shift()
@@ -123,7 +125,7 @@ def f(x):
     # now take rolling average?
     # this kind of helps to smooth out the cluster graph but it doesn't really help to identify cluster boundaries?
     # y is the cluster data
-    return y_smooth, y_chunky
+    return y_smooth, y_chunky, rolling_window
 # next step from here is to find how often different magnitudes occur? (for point 3.)
 # is it more useful to use the step-wise data rather than the averaged data for this? 
 # I mean I could use the local maxima of the y data and place clusters there, and that will be their magnitude and freq?
@@ -221,6 +223,8 @@ def point_width(x):
         while x_lst[idx] == x_lst[idx+1]:
             point_width += 1
             idx += 1
+            if idx+1 == len(x_lst):
+                break
         if point_width > max_point_width:
             max_point_width = point_width
     possible_widths = list(range(1,max_point_width+1)) # list of all possible widths
@@ -238,6 +242,8 @@ def point_width(x):
                     while x_lst[coord_idx] == x_lst[coord_idx+1]:
                         point_width += 1
                         coord_idx += 1
+                        if coord_idx+1 == len(x_lst):
+                            break
                     if point_width == w:
                         w_counter += 1
             if peak_counter != 0:
@@ -247,36 +253,40 @@ def point_width(x):
                 i[w] = 0
         width_dist[mag_idx] = i
     return width_dist
-
+#########################################################################################################
+############################### I decided to trash this function ########################################
 # takes in cluster data (f(x))
-def peak_spread(x):
-    # only peaks of magnitude > 1 have a spread (due to step-wise nature of rough data)
-    # assumptions:
-        # spreads are symmetric about peaks
-        # spreads happen in regular intervals (peak of 3 goes to 2 then to 1 or peak of 8 goes to 5 then to 1 then to 0)
-    # since in reality spreads are usually not perfectly symmetric, we will measure the largest spread for a given peak
-    # what we will measure here is far is the furtherst zero coordinate from a given peak's max value
-    # goal of this func is to find a spread distribution for each magnitude of peak
-        # is point width idependent from peak spread?? I think so
-    x_lst = x[1].dropna().tolist()
-    max_magnitude = x[1].max()
-    mag_list = list(range(1, max_magnitude+1))   # list of all possible magnitudes
-    peak_data = count_peaks(x, 'rough')
-    peak_coords = peak_data[1]
-    max_spread = 0
+# def peak_spread(x):
+#     # only peaks of magnitude > 1 have a spread (due to step-wise nature of rough data)
+#     # assumptions:
+#         # spreads are symmetric about peaks
+#         # spreads happen in regular intervals (peak of 3 goes to 2 then to 1 or peak of 8 goes to 5 then to 1 then to 0)
+#     # since in reality spreads are usually not perfectly symmetric, we will measure the largest spread for a given peak
+#     # what we will measure here is far is the furtherst zero coordinate from a given peak's max value
+#     # goal of this func is to find a spread distribution for each magnitude of peak
+#         # is point width idependent from peak spread?? I think so
+#     x_lst = x[1].dropna().tolist()
+#     max_magnitude = x[1].max()
+#     mag_list = list(range(1, max_magnitude+1))   # list of all possible magnitudes
+#     peak_data = count_peaks(x, 'rough')
+#     peak_coords = peak_data[1]
+#     left_max_spread = 0
+#     right_max_spread = 0
     
-    for i in mag_list:
-        if i == 1:   # only run spread checking if peak magnitdue is big enough
-            continue
-        mag_idx = i
-        i = {}
-        for n in peak_coords:
-            if x[1][n] == mag_idx:
-                # find the largest decrease within 2 steps and that will be the spread
-                # if the magnitude doesn't fall to 0 within 2 steps, assume it to be 0 in the next step
-                return
+#     for i in mag_list:
+#         if i == 1:   # only run spread checking if peak magnitdue is big enough
+#             continue
+#         mag_idx = i
+#         i = {}
+#         for n in peak_coords:
+#             if x[1][n] == mag_idx:
+#                 # find the largest decrease within 2 steps and that will be the spread
+#                 # if the magnitude doesn't fall to 0 within 2 steps, assume it to be 0 in the next step
+#                 return
         
-    return
+#     return
+#########################################################################################################
+
 
 # takes in some set of data (like percentage_pop)
 # and tries to synthesize data that looks similar and behaves the same way statistically
@@ -322,10 +332,72 @@ def synthesise(x):
                     domain[n+idx] = domain[n]
                     idx += 1
                     width -=1
+                # add right side spread
+                if n+width+1<len(domain):
+                    if i > 1 and domain[n+width+1] == 0:
+                        if probability(0.75):  # right side spread is rarer than left side
+                            domain[n+width+1] = math.ceil(domain[n]/2)
+                            if n+width+2<len(domain) and probability(0.25):
+                                domain[n+width+2] = math.ceil(domain[n]/4) # small chance of fat right tail
+    # add left side spread
+    for n in peak_coords:
+        if n>1:
+            if domain[n] > 1 and domain[n-1] == 0:
+                if probability(0.90):  # left side spread is fairly common
+                    domain[n-1] = math.ceil(domain[n]/2)
+                    if n>2 and probability(0.40):
+                        domain[n-2] = math.ceil(domain[n]/4)
+    
                 
     return pd.Series(domain)
-# remarks on synthesised data:
-    # the distribution looks right, but the peak widths probably need more characterising before we can start smoothing with rolling ave
+    
+#######################################  FULL NOTES ON SYNTHESIS #########################################
+# What have I learnt from synthesising market data?
+# it seems that we can fully describe the statistical behaviour of higher order derivatives of price to produce comvincing mock data
+# of course, the pseudorandom functions are not actually that accurate (try using the prob_checker() function to test)
+# this will mean that the distributions are usually not prcise when synthesising.
+# there seem to be 3 main things we need to know in order to describe a set of  volatility clustering data
+    # 1. the probability that a given coordinate is a peak (can be obtained via rough_peak_prob() function)
+    # 2. the magnitude probability distribution of a peak, given that point is a peak (can be obtained via rough_magnitude_prob() function)
+    # 3. the width of the tip of a peak, given that peak is of a certain magnitude (can be obtained via point_width())
+    
+    # as for spread, I decided that it wasn't worth figuring out a probability distribution for that.
+    # by observation, I noticed each step away from the peak's top had the effect of approximately halving the value
+    # and some peaks had longer tails, while others had no tails so I added some probabilistic factors in the synthesise() function to simulate this
+#
+# the synthesis function basically applies all 3 points by measuring the key probabilites from the actual data
+# it then applies some spread (that can be changed manually if desired) 
+# We end up with a set of fake data that both looks visually similar and behaves statistically identically to the original data
+#
+# What are the next possible steps from here?
+# I think there are 3 main possibilities.
+#
+# 1. develop a predictive model (according to the structure above) using the following steps:
+    # 1. call pmcheck() to find the probability of direction changes
+    # 2. find relavant probabilites, mean and SD to describe higher order derivative data
+    # 3. based on probabilities and pmcheck(), predict next change in higher order derivative (in the form of a probability distribution)
+    # 4. express the probability distribution in terms of price changes
+
+
+# 2. use the cluster identification function f() to figure out when we are in a volatility cluster and figure out the likely direction using pmcheck()
+# ok the pmcheck() for direction may be a stretch but it's a thought
+# basically if for example we develop strategies for high volatility periods, we want to know objectively when we are in a high volatility period
+# the f() function can already augment other models by quantifying volatility to decide whether we should even be using a given model
+# there are options strategies which love high volatility and those which love low volatility so this can also be useful for choosing between those strats
+# beyond just quantifying current volatility, we can also know the statistical behaviour of a given stock/equity's volatility
+# this alone can help us decide which options strategies to us
+
+
+# 3. attempt to use fractal mathematics to perform fractal analysis
+    # for this, I need to read more about statistical fractals in time, how to do math with them and whether this is actually applicable here
+    # but the rough idea is based on the following points:
+        # 1. stock market price changes are a fractals in time - the charts look the same regardless of time scale/resolution
+        # 2. the statistical properties are also largely unchanged across timescales
+        # 3. we can exploit this fact by analysing super long time scales to get more accurate results, then applying those results to more reasonable timescales for a predictive model (like option 1)
+        # 4. alternatively, we can use results from analysing moderate time scales to day trade options
+        # 5. OR, we can aggregate results ACROSS time scales for long-term positions
+    # there are probably more things we can do with fractal maths but idk
+##########################################################################################################    
 
 
 def shape_visual(x, name): # plot the time dependence of a variable in one plot and the identified clusters in another plot
@@ -346,11 +418,13 @@ def shape_visual(x, name): # plot the time dependence of a variable in one plot 
 
 def shape_synth(x, name):
     y = f(x)[1]   # [0] is smoothed data, [1] is chunky data
+    max_y = y.max()
     plt.subplot(2,1,1)
     plt.plot(range(len(y)), (y))
     name = name + ' real data'
     plt.title(name)
     plt.grid()
+    plt.ylim(0, max_y+0.25)
     plt.subplot(2,1,2)
     z = synthesise(x)
     plt.plot(range(len(z)), z)
@@ -358,8 +432,29 @@ def shape_synth(x, name):
     plt.title(clust_name)
     plt.tight_layout(pad=1.0)
     plt.grid()
+    plt.ylim(0, max_y+0.25)
     plt.show()
-    
+
+def smooth_shape_synth(x, name):
+    complete_y_data = f(x)
+    y = complete_y_data[0]   # [0] is smoothed data, [1] is chunky data
+    max_y = y.max()
+    plt.subplot(2,1,1)
+    plt.plot(range(len(y)), (y))
+    name = name + ' real data'
+    plt.title(name)
+    plt.grid()
+    plt.ylim(0, max_y+0.25)
+    plt.subplot(2,1,2)
+    z = synthesise(x)
+    smooth_z = z.rolling(complete_y_data[2]).mean()
+    plt.plot(range(len(smooth_z)), smooth_z)
+    clust_name = "synthesised data"
+    plt.title(clust_name)
+    plt.tight_layout(pad=1.0)
+    plt.grid()
+    plt.ylim(0, max_y+0.25)
+    plt.show()
 
 
 
@@ -401,7 +496,7 @@ percentage_eighth = derivative(percentage_seventh)
 
 shape_visual(percentage_pop, "percentage_pop")
 shape_synth(percentage_pop, "percentage_pop")
-
+smooth_shape_synth(percentage_pop, "percentage_pop")
 
 
 
