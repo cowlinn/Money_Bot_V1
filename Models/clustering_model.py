@@ -65,7 +65,7 @@ import random
 # predictive model structure so far:
 # - working on percentage_pop
 # 1. call pmcheck() to find the probability of direction changes
-# 2. find relavant probabilites, mean and SD to describe higher order derivative data
+# 2. find relavant probabilities, mean and SD to describe higher order derivative data
 # 3. based on probabilities and pmcheck(), predict next change in higher order derivative (in the form of a probability distribution)
 # 4. express the probability distribution in terms of price changes
 
@@ -460,7 +460,7 @@ def smooth_shape_synth(x, name):
 
 
 
-stock_name = "NIO"
+stock_name = "SPY"
 data_period = "10d"
 resolution = "15m"
 time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
