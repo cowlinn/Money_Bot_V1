@@ -154,6 +154,15 @@ def count_peaks(x, texture):  # counts the number of local maxima in a given set
         print("Please specify texture")
         return
     peak_count = 0
+    # to parse synthesised data
+    if isinstance(x, list):
+        peak_coords = []
+        for i in range(1, (len(x)-1)):
+            if (x[i] > x[i-1]) and (x[i] >= x[i+1]):
+                peak_count +=1
+                peak_coords.append(i)
+        return peak_count, peak_coords
+    # for normal data
     x_lst = x[texture].dropna().tolist()
     peak_coords = []
     for i in range(1, (len(x_lst)-1)):
@@ -193,18 +202,95 @@ def rough_magnitude_prob(x):
     return mag_dict   # returns a dictionary with keys being magnitude (how many SD away from mean) and values being probability
 # what this means is that if we know a peak is here, this distribution describes what its magnitude will be
 
+# takes in cluster data(f(x))
+def point_width(x):
+    # goal of this function is to find a width distribution for points at different height
+    x_lst = x[1].dropna().tolist()
+    max_magnitude = x[1].max()
+    mag_list = list(range(1, max_magnitude+1))   # list of all possible magnitudes
+    peak_data = count_peaks(x, 'rough')
+    peak_coords = peak_data[1]
+    max_point_width = 0
+    # find the maximum point width
+    width_dist = {}   # dictionary that cointains a bunch of dictionaries. the keys are magnitudes, the values are width distributions for each magnitude
+    # given that a peak is of magnitude i, what is the probability that its point width is w
+    # count peaks of magnitude i, count points with width w, divide w count by peak count
+    for i in peak_coords:
+        idx = i
+        point_width = 1
+        while x_lst[idx] == x_lst[idx+1]:
+            point_width += 1
+            idx += 1
+        if point_width > max_point_width:
+            max_point_width = point_width
+    possible_widths = list(range(1,max_point_width+1)) # list of all possible widths
+    for i in mag_list:
+        mag_idx = i
+        i = {}   # width_size (or w): probability that point has width w
+        for w in possible_widths:
+            peak_counter = 0 # counts how many peaks are of magnitude i
+            w_counter = 0   # counts how many peaks at each magnitude in mag_idx have width of peak_width
+            for n in peak_coords:
+                coord_idx = n
+                point_width = 1
+                if x[1][n] == mag_idx:
+                    peak_counter += 1
+                    while x_lst[coord_idx] == x_lst[coord_idx+1]:
+                        point_width += 1
+                        coord_idx += 1
+                    if point_width == w:
+                        w_counter += 1
+            if peak_counter != 0:
+                # print(peak_counter, mag_idx, w_counter)
+                i[w] = w_counter/peak_counter
+            elif peak_counter == 0:
+                i[w] = 0
+        width_dist[mag_idx] = i
+    return width_dist
+
+# takes in cluster data (f(x))
+def peak_spread(x):
+    # only peaks of magnitude > 1 have a spread (due to step-wise nature of rough data)
+    # assumptions:
+        # spreads are symmetric about peaks
+        # spreads happen in regular intervals (peak of 3 goes to 2 then to 1 or peak of 8 goes to 5 then to 1 then to 0)
+    # since in reality spreads are usually not perfectly symmetric, we will measure the largest spread for a given peak
+    # what we will measure here is far is the furtherst zero coordinate from a given peak's max value
+    # goal of this func is to find a spread distribution for each magnitude of peak
+        # is point width idependent from peak spread?? I think so
+    x_lst = x[1].dropna().tolist()
+    max_magnitude = x[1].max()
+    mag_list = list(range(1, max_magnitude+1))   # list of all possible magnitudes
+    peak_data = count_peaks(x, 'rough')
+    peak_coords = peak_data[1]
+    max_spread = 0
+    
+    for i in mag_list:
+        if i == 1:   # only run spread checking if peak magnitdue is big enough
+            continue
+        mag_idx = i
+        i = {}
+        for n in peak_coords:
+            if x[1][n] == mag_idx:
+                # find the largest decrease within 2 steps and that will be the spread
+                # if the magnitude doesn't fall to 0 within 2 steps, assume it to be 0 in the next step
+                return
+        
+    return
+
 # takes in some set of data (like percentage_pop)
 # and tries to synthesize data that looks similar and behaves the same way statistically
 def synthesise(x):
+    y = f(x)
     domain = [0]*len(x)
-    magnitude_distribution = rough_magnitude_prob(f(x))
+    magnitude_distribution = rough_magnitude_prob(y)
     magnitude_distribution_lst = []
     # convert from dictionary to a list
     for i in magnitude_distribution:
         magnitude_distribution_lst.append(magnitude_distribution[i])
     # list of all likely magnitudes
     magnitude_lst = list(range(1, len(magnitude_distribution)+1))
-    peakProbability = rough_peak_prob(f(x))
+    peakProbability = rough_peak_prob(y)
     # distribute peaks
     for i in range(len(x)):
         if probability(peakProbability):
@@ -213,6 +299,30 @@ def synthesise(x):
     for i in range(len(x)):
         if domain[i] == 1:  # if peak, apply distribution to decide its magnitude
             domain[i] = random.choices(magnitude_lst, weights=magnitude_distribution_lst, k=1)[0]
+    # apply point width distribution
+    width_distribution = point_width(y)
+    width_list = list(range(1, len(width_distribution[1])+1))  # all possible point widths
+    peak_coords = count_peaks(domain, 'rough')[1]
+    # print(peak_coords)
+    # print(domain)
+    for i in magnitude_lst:
+        w_dist = width_distribution[i]# width probability distribution for a given magnitude i
+        w_dist_lst = [] 
+        for a in w_dist:
+            w_dist_lst.append(w_dist[a])
+        for n in peak_coords:
+            if domain[n] == i:
+                # assign a width to each point based on its magnitude
+                width = random.choices(width_list, weights=w_dist_lst, k=1)[0]
+                idx = 1
+                if n+width > len(domain):
+                    excess = n+width - len(domain)
+                    width = width - excess
+                while width > 1:
+                    domain[n+idx] = domain[n]
+                    idx += 1
+                    width -=1
+                
     return pd.Series(domain)
 # remarks on synthesised data:
     # the distribution looks right, but the peak widths probably need more characterising before we can start smoothing with rolling ave
@@ -249,6 +359,10 @@ def shape_synth(x, name):
     plt.tight_layout(pad=1.0)
     plt.grid()
     plt.show()
+    
+
+
+
 stock_name = "SPY"
 data_period = "10d"
 resolution = "15m"
@@ -283,6 +397,7 @@ percentage_pop = derivative(percentage_crackle)
 percentage_sixth = derivative(percentage_pop)
 percentage_seventh = derivative(percentage_sixth)
 percentage_eighth = derivative(percentage_seventh)
+
 
 shape_visual(percentage_pop, "percentage_pop")
 shape_synth(percentage_pop, "percentage_pop")
