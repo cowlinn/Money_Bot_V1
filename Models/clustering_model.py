@@ -398,7 +398,7 @@ def synthesise(x):
     # there are probably more things we can do with fractal maths but idk
 ##########################################################################################################    
 
-# predict the next value of x
+# predict the next value of x 
 def rough_predict(x):
     y = f(x)  # rough cluster data
     y_lst = y[1].tolist()
