@@ -224,7 +224,7 @@ def main(stock_name, data_period, resolution, shift):
 stock_name = input(f"Choose your stock: Format is the ticker name, e:g {AAPL} or {MSFT}")
 data_period = input(f"Choose your data_preiod --> e.g: {eight_days} for 8 days or even {two_months} for 2 months")                    
 resolution = input(f"Choose your resolution: there are only these to choose from {default_res}")
-time_interval = input(f"Choose your time_interval: CHOOSE AN INTEGER for however many 15min blocks!") # time interval from today in days (when do we want to hit the target price?)
+time_interval = input(f"Choose your time_interval: CHOOSE AN INTEGER for however many {resolution} blocks!") # time interval from today in days (when do we want to hit the target price?)
 shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
 # formula for 1d resolution and for all integer time interval is int(time_interval)
 # formula for 1h resolution and integer day time interval is int(time_interval*7)
