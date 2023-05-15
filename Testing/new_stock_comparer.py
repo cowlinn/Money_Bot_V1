@@ -307,7 +307,7 @@ def main():
 
         #this part is mainly for backtesting# 
         back_test()
-        back_test(mean=69, median=median ,IQR= Q3-Q1, SD= all_stocks=all_stocks, investment_period=investment_period )
+        back_test(mean=69, median=median, IQR= Q3-Q1,all_stocks=all_stocks, investment_period=investment_period)
         print()
         main()
 
