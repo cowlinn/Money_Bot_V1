@@ -374,7 +374,6 @@ def synthesise(x):
 #
 # 1. develop a predictive model (according to the structure above) using the following steps:
     # 1. call pmcheck() to find the probability of direction changes
-    # 2. find relavant probabilites, mean and SD to describe higher order derivative data
     # 3. based on probabilities and pmcheck(), predict next change in higher order derivative (in the form of a probability distribution)
     # 4. express the probability distribution in terms of price changes
 
@@ -399,7 +398,45 @@ def synthesise(x):
     # there are probably more things we can do with fractal maths but idk
 ##########################################################################################################    
 
+# predict the next value of x 
+def rough_predict(x):
+    y = f(x)  # rough cluster data
+    y_lst = y[1].tolist()
+    flip_prob = pmcheck(x)
+    mean = x.mean()
+    SD = x.std()
+    peak_prob = rough_peak_prob(y)   # probability that the next point is a peak
+    magnitude_dist = rough_magnitude_prob(y)   # if it is a peak, describe its magnitude 
+    width_dist = point_width(y)     # how long will the peak last for?
+    
+    possible_magnitudes = list(range(1, len(magnitude_dist)+1))
+    possible_widths = list(range(1, len(width_dist[1])+1))
+    
+    latest_y_val = y_lst[-1]
+    second_latest_y_val = y_lst[-2]
+    
+    if latest_y_val == 0:   # if no cluster
+        final_distribution = {}
+        for i in possible_magnitudes:
+            mag = i
+            i = {}
+            for w in possible_widths:
+                i[w] = peak_prob*magnitude_dist[mag]*width_dist[mag][w]
+            final_distribution[mag] = i
+        return final_distribution  # final distribution of potential peaks (case for no peak is not shown. that should just be  1 - sum of all probabilities in the final dist)
+    # first set of key:value pairs is magnitude:(dictionary containing width probabilities for that magnitude)
+    # second set of key:value pairs is always width:probability
+    # in effect, to get to probability of the next data point being a peak of magnitude 1, width 1
+    # you would take final_distribution[1][1]
+    # for magnitude 2 width 1 it would be final_distribution[2][1]
+    # for magnitude 3 width 2 it would be final_distribution[3][2] and so on
+    # this will be the format for the output of this function
+            
 
+    # find out if we are in a cluster of some kind
+    if latest_y_val > 0 and second_latest_y_val > latest_y_val:  # exiting a cluster/ tail end of a cluster
+        return
+    
 def shape_visual(x, name): # plot the time dependence of a variable in one plot and the identified clusters in another plot
     y = f(x)[0]   # [0] is smoothed data, [1] is chunky data
     plt.subplot(2,1,1)
