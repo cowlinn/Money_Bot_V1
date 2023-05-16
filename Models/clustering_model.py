@@ -274,7 +274,7 @@ def point_width(x):
 #     right_max_spread = 0
     
 #     for i in mag_list:
-#         if i == 1:   # only run spread checking if peak magnitdue is big enough
+#         if i == 1:   # only run spread checking if peak magnitude is big enough
 #             continue
 #         mag_idx = i
 #         i = {}
@@ -399,6 +399,7 @@ def synthesise(x):
 ##########################################################################################################    
 
 # predict the next value of x 
+# rn its more of predicting the next cluster point
 def rough_predict(x):
     y = f(x)  # rough cluster data
     y_lst = y[1].tolist()
@@ -416,14 +417,20 @@ def rough_predict(x):
     second_latest_y_val = y_lst[-2]
     
     if latest_y_val == 0:   # if no cluster
-        final_distribution = {}
-        for i in possible_magnitudes:
-            mag = i
-            i = {}
-            for w in possible_widths:
-                i[w] = peak_prob*magnitude_dist[mag]*width_dist[mag][w]
-            final_distribution[mag] = i
-        return final_distribution  # final distribution of potential peaks (case for no peak is not shown. that should just be  1 - sum of all probabilities in the final dist)
+        print("We are currently not in a peak.")
+        # final_peak_distribution = {}
+        # for i in possible_magnitudes:
+        #     mag = i
+        #     i = {}
+        #     for w in possible_widths:
+        #         i[w] = peak_prob*magnitude_dist[mag]*width_dist[mag][w]
+        #     final_peak_distribution[mag] = i
+        final_mag_distribution = magnitude_dist  # predict the magnitude of the next change (including chance for it to be 0)
+        for i in final_mag_distribution:
+            final_mag_distribution[i] = final_mag_distribution[i]*peak_prob
+        final_mag_distribution[0] = 1 - peak_prob  # chance that the next change isn't a peak
+        return final_mag_distribution #, final_peak_distribution
+    # final distribution of potential peaks (case for no peak is not shown. that should just be  1 - sum of all probabilities in the final dist)
     # first set of key:value pairs is magnitude:(dictionary containing width probabilities for that magnitude)
     # second set of key:value pairs is always width:probability
     # in effect, to get to probability of the next data point being a peak of magnitude 1, width 1
@@ -431,11 +438,90 @@ def rough_predict(x):
     # for magnitude 2 width 1 it would be final_distribution[2][1]
     # for magnitude 3 width 2 it would be final_distribution[3][2] and so on
     # this will be the format for the output of this function
+    # we can translate from magnitude to absolute value of change by using absolute_value = magnitude*SD+mean
             
+    # actually we don't really care about what the width of the next peak will be right?
 
     # find out if we are in a cluster of some kind
+    # there's like 3 scenarios:
+        # 1. we are at the tail end of a cluster
+        # 2. we are in the middle of a cluster (any point beyond the first high)
+        # 3. we are just entering a cluster
+    # for tail end, we can treat it the same as the no-cluster scenario
     if latest_y_val > 0 and second_latest_y_val > latest_y_val:  # exiting a cluster/ tail end of a cluster
-        return
+        print("We are currently exiting a peak.")
+        # final_peak_distribution = {}
+        # for i in possible_magnitudes:
+        #     mag = i
+        #     i = {}
+        #     for w in possible_widths:
+        #         i[w] = peak_prob*magnitude_dist[mag]*width_dist[mag][w]
+        #     final_peak_distribution[mag] = i
+        final_mag_distribution = magnitude_dist  # predict the magnitude of the next change (including chance for it to be 0)
+        for i in final_mag_distribution:
+            final_mag_distribution[i] = final_mag_distribution[i]*peak_prob
+        final_mag_distribution[0] = 1 - peak_prob  # chance that the next change isn't a peak
+        return final_mag_distribution #, final_peak_distribution
+    
+    # for middle of the cluster we need to know the following:
+        # what is the peak height?
+        # how long is the peak width so far?
+        # what is the probability that it continues? (if no continue then we treat it like the no peak)
+    if latest_y_val > 0 and latest_y_val == second_latest_y_val:
+        peak_width = 2
+        last = -1
+        while y_lst[last-1] == y_lst[last-2]:
+            peak_width += 1
+            last -= 1
+        # peak_width gives the peak width so far
+        peak_height = latest_y_val
+        # find the width distribution for this height
+        w_dist = width_dist[peak_height]
+        renormalised_w_dist = {}
+        for i in w_dist:  # iterates through all possible widths
+            if i < peak_width:
+                w_dist[i] = 0
+            renormalised_w_dist[i] = w_dist[i]/(sum(w_dist.values()))
+        stopping_prob = renormalised_w_dist[peak_width]
+        continue_prob = 1 - stopping_prob
+        # if its stopping, we treat it like the next point could be a peak again
+        # at this point, I'm thinking we should just retunr final_mag_distribution for everything
+        # there's no sense in finding the width distribution for a continuing peak
+        # besides, the probabilites for individual widths become really small
+        final_mag_distribution = {}  # predict the magnitude of the next change (including chance for it to be 0)
+        # when stopping, the next point is likely to be the half of the peak (spreading behaviour)
+        # but there's only spreading if peak_height >1 and if next coord is predicted to be 0            
+        # for the case of height >1
+        copied_mag_dist = magnitude_dist.copy()
+        if peak_height > 1:
+            # s = 0
+            copied_mag_dist[peak_height] = 0
+            for i in copied_mag_dist:
+                final_mag_distribution[i] = copied_mag_dist[i]/sum(copied_mag_dist.values())
+            # print(copied_mag_dist)
+            # print(final_mag_distribution)
+            for i in final_mag_distribution:
+                final_mag_distribution[i] = stopping_prob*peak_prob*final_mag_distribution[i] #(correct)
+                # renormalise magnitude_dist to exclude peak_height before multiplying by stopping_prob*peak_prob
+                # s += final_mag_distribution[i]
+            # print(s)
+            spread_chance = 0.75
+            final_mag_distribution[0] = stopping_prob*(1-peak_prob)*(1-spread_chance) #(correct)
+            final_mag_distribution[math.ceil(peak_height/2)] += stopping_prob*((1-peak_prob)*spread_chance) #+ peak_prob*magnitude_dist[math.ceil(peak_height/2)])
+            # print(final_mag_distribution[0]+stopping_prob*((1-peak_prob)*spread_chance))
+            # print(sum(final_mag_distribution.values()))
+            # print(final_mag_distribution[peak_height])
+            # print(stopping_prob)
+            # print(continue_prob)
+            # s plus this sum above should add up to stopping_prob
+            final_mag_distribution[peak_height] = continue_prob  #+ stopping_prob*peak_prob*magnitude_dist[peak_height]
+        # the problem now is that sum(final_mag_distribution.values()) is not 1
+        # it has something to do with the stopping_prob and continue_prob
+        # when I change them, the end result varies. when i lower continue_prob and raise stopping, the sum drops
+        # when I raise continue prob the sum increase
+            return final_mag_distribution
+            
+        
     
 def shape_visual(x, name): # plot the time dependence of a variable in one plot and the identified clusters in another plot
     y = f(x)[0]   # [0] is smoothed data, [1] is chunky data
