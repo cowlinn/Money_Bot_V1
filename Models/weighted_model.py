@@ -59,6 +59,13 @@ default_res = "[1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo]"
 def derivative(x):
     return x - x.shift()
 
+def ordered_derivative(x, order):
+    while order > 0:
+        x = derivative(x)
+        order -= 1
+    return x
+
+
 def probability(probability):
     return random.random() < probability
 
@@ -117,25 +124,47 @@ def predict(x): # tries to predict the next value of a series
         return weighted_ave_x
     return weighted_ave_x # actually should just return price prediction? no I only want pred func to take in one arg
 
-def pred_down(x, w, index): # x is data for desired derivative, w is the x' prediction
-    if isinstance(x, list):
-        x = pd.Series(x).dropna()
-    derivatives = {}
-    derivatives[0] = x
-    #derivatives[1] = derivative(x)
-    idx = 0
-    while idx < index:
-        idx+=1
-        derivatives[idx] = derivative(derivatives[idx-1])
-    for i in range(len(derivatives)):
-        derivatives[i] = derivatives[i].dropna().tolist()
-    derivatives[index].append(w)
-    for i in range(index, 0, -1):
-        #print(i)
-        #print(derivatives[i-1][-1], derivatives[i][-1])
-        derivatives[i-1].append(derivatives[i-1][-1] + derivatives[i][-1])
-        #print (derivatives[i-1][-1])
-    return derivatives[0][-1]
+# def pred_down(x, w, index): # x is data for desired derivative, w is the x' prediction
+#     if isinstance(x, list):
+#         x = pd.Series(x).dropna()
+#     derivatives = {}
+#     derivatives[0] = x
+#     #derivatives[1] = derivative(x)
+#     idx = 0
+#     while idx < index:
+#         idx+=1
+#         derivatives[idx] = derivative(derivatives[idx-1])
+#     for i in range(len(derivatives)):
+#         derivatives[i] = derivatives[i].dropna().tolist()
+#     derivatives[index].append(w)
+#     for i in range(index, 0, -1):
+#         #print(i)
+#         #print(derivatives[i-1][-1], derivatives[i][-1])
+#         derivatives[i-1].append(derivatives[i-1][-1] + derivatives[i][-1])
+#         #print (derivatives[i-1][-1])
+#     return derivatives[0][-1]
+def anti_derivative(x, final_data):
+    order = 0
+    copy_x = x.copy()
+    x_lst = x.tolist()
+    final_data_lst = final_data.tolist()
+    # find what order derivative is the final data
+    while x_lst[-20:] != final_data_lst[-21:-1]:
+        order += 1
+        x = derivative(x)
+        x_lst = x.tolist()
+    # print(order)
+    pred_x_term = final_data_lst[-1]
+    while order > 0:
+        # print(order)
+        add_val = ordered_derivative(copy_x, order-1).tolist()[-1]
+        # print(add_val)
+        pred_x_term += add_val
+        order -= 1
+    pred_x_data = copy_x.tolist()
+    pred_x_data.append(pred_x_term)
+    pred_x_data = pd.Series(pred_x_data)
+    return pred_x_data
 
 def pm_optimise(x): # finds the optimal derivative (highest output of pmcheck()) and returns that derivative
 # note: should take in percentage_increase pd series
@@ -169,18 +198,25 @@ def RMSE(percentage_increase):
     # make a prediction at each percentage_increase data point at find the residual
     for i in range((len(percentage_increase)-1)):
         data = (percentage_increase[:-i-1]).dropna()
-        if len(data) < 2*idx:   # checks if there is sufficient data left after slicing
+        print(iterations, len(data), 5*idx)
+        if len(data) < 5*idx:   # checks if there is sufficient data left after slicing
+            print('broken')
             break
         iterations += 1
         optimised = pm_optimise(data)
         x = optimised[0]
         pred_x = predict(x)
+        x_lst = x.tolist()
+        x_lst.append(pred_x)
+        x = pd.Series(x_lst)
         index = optimised[1]
-        predicted_percentage_increase = pred_down(percentage_increase, pred_x, index)
+        predicted_percentage_increase = anti_derivative(data, x).tolist()[-1]
         residual = predicted_percentage_increase - percentage_increase_lst[-i-1]
         residual_sq = residual**2
         sumresidual += residual_sq
+        print(sumresidual)
     RMSE = math.sqrt(sumresidual/iterations)
+    print(RMSE)
     return RMSE
 # NOTE: RMSE changes due to random nature of the magnitude for this model
 # Ideally, the RMSE function would take in all historical data and make a prediction using the same amount of data as the main prediction
@@ -209,10 +245,13 @@ def main(stock_name, data_period, resolution, shift):
     # percentage_seventh = derivative(percentage_sixth)
     optimised = pm_optimise(percentage_increase)
     x = optimised[0]
+    x_lst = x.tolist()
     pred_x = predict(x)
+    x_lst.append(pred_x)
+    x = pd.Series(x_lst)
     index = optimised[1]
     error = RMSE(percentage_increase)
-    predicted_percentage_increase = pred_down(percentage_increase, pred_x, index)
+    predicted_percentage_increase = anti_derivative(percentage_increase, x).tolist()[-1]
     print(stock_name)
     print ("The predicted percentage increase is " + str(round(predicted_percentage_increase, 3)) + "%")
     predicted_price = (predicted_percentage_increase/100+1)*latest_price

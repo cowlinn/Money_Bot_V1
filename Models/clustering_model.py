@@ -204,6 +204,8 @@ def rough_magnitude_prob(x):
     return mag_dict   # returns a dictionary with keys being magnitude (how many SD away from mean) and values being probability
 # what this means is that if we know a peak is here, this distribution describes what its magnitude will be
 
+
+
 # takes in cluster data(f(x))
 def point_width(x):
     # goal of this function is to find a width distribution for points at different height
@@ -398,6 +400,8 @@ def synthesise(x):
     # there are probably more things we can do with fractal maths but idk
 ##########################################################################################################    
 
+# THIS PREDICTION MODEL IS NOT GOING TO WORK (I didn't finish it)
+# (magnitude of) price movements are not independent but I assumed them to be dependent in the no peak case
 # predict the next value of x 
 # rn its more of predicting the next cluster point
 def rough_predict(x):
@@ -581,47 +585,48 @@ def smooth_shape_synth(x, name):
     plt.ylim(0, max_y+0.25)
     plt.show()
 
-
-
-stock_name = "SPY"
-data_period = "10d"
-resolution = "15m"
-time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
-shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
-# formula for 1d resolution and for all integer time interval is int(time_interval)
-# formula for 1h resolution and integer day time interval is int(time_interval*7)
-# formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
-# formula for 15m resolution and 15m time interval (=1) is int(time_interval)
-# formula for 1m resolution and 1 day time interval is int(time_interval*6.5*60)     
-# formula for 1m resolution and 15 min time interval (1/(6.5*4)) is int(time_interval*6.5*60)
-
-
-stock = yf.Ticker(stock_name)  # this goes in main()
-hist = stock.history(period = data_period, interval = resolution) # historical price data
-hist.reset_index(inplace=True) # converts datetime to a column
-hist['time_index'] = range(-len(hist.index), 0)
-hist['time_index'] += 1
-price = hist['Close']
-increase = price - price.shift(shift)
-percentage_increase = (increase/price.shift()*100).dropna()
-latest_price = hist['Close'][len(hist['Close'])-1]
-hist['increase'] = increase
-increase = increase.dropna()
-# increase pd series object always has (shift) less rows than hist
-# acceleration = derivative(increase)
-percentage_acceleration = derivative(percentage_increase)
-# jerk = derivative(acceleration)
-percentage_jerk = derivative(percentage_acceleration)
-percentage_crackle = derivative(percentage_jerk)
-percentage_pop = derivative(percentage_crackle)
-percentage_sixth = derivative(percentage_pop)
-percentage_seventh = derivative(percentage_sixth)
-percentage_eighth = derivative(percentage_seventh)
-
-
-shape_visual(percentage_pop, "percentage_pop")
-shape_synth(percentage_pop, "percentage_pop")
-smooth_shape_synth(percentage_pop, "percentage_pop")
+# I just put this stuff in a function so I can import this script as a module in other code
+# can change stuff here and call main() directly if you wanna run this script directly
+def main():
+    stock_name = "SPY"
+    data_period = "10d"
+    resolution = "15m"
+    time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
+    shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
+    # formula for 1d resolution and for all integer time interval is int(time_interval)
+    # formula for 1h resolution and integer day time interval is int(time_interval*7)
+    # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
+    # formula for 15m resolution and 15m time interval (=1) is int(time_interval)
+    # formula for 1m resolution and 1 day time interval is int(time_interval*6.5*60)     
+    # formula for 1m resolution and 15 min time interval (1/(6.5*4)) is int(time_interval*6.5*60)
+    
+    
+    stock = yf.Ticker(stock_name)  # this goes in main()
+    hist = stock.history(period = data_period, interval = resolution) # historical price data
+    hist.reset_index(inplace=True) # converts datetime to a column
+    hist['time_index'] = range(-len(hist.index), 0)
+    hist['time_index'] += 1
+    price = hist['Close']
+    increase = price - price.shift(shift)
+    percentage_increase = (increase/price.shift()*100).dropna()
+    latest_price = hist['Close'][len(hist['Close'])-1]
+    hist['increase'] = increase
+    increase = increase.dropna()
+    # increase pd series object always has (shift) less rows than hist
+    # acceleration = derivative(increase)
+    percentage_acceleration = derivative(percentage_increase)
+    # jerk = derivative(acceleration)
+    percentage_jerk = derivative(percentage_acceleration)
+    percentage_crackle = derivative(percentage_jerk)
+    percentage_pop = derivative(percentage_crackle)
+    percentage_sixth = derivative(percentage_pop)
+    percentage_seventh = derivative(percentage_sixth)
+    percentage_eighth = derivative(percentage_seventh)
+    
+    
+    shape_visual(percentage_pop, "percentage_pop")
+    shape_synth(percentage_pop, "percentage_pop")
+    smooth_shape_synth(percentage_pop, "percentage_pop")
 
 
 
