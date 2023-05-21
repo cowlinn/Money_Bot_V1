@@ -2,8 +2,8 @@ import pandas as pd
 import datetime
 from datetime import datetime as dt
 from pytz import timezone
+import threading
 import time
-import alpaca_trade_api as alpaca
 import json
 import smtplib
 from datetime import timedelta
@@ -13,15 +13,39 @@ import csv
 import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
+from ibapi.contract import Contract
 
-<<<<<<< HEAD
+auth = json.loads(open('Auth/authDS.txt', 'r').read())
+
 class IBapi(EWrapper, EClient):
      def __init__(self):
          EClient.__init__(self, self) 
+         
 
 app = IBapi()
 app.connect('127.0.0.1', 7497, 123)
-app.run()
+
+def run_loop():
+	app.run()
+
+api_thread = threading.Thread(target=run_loop, daemon=True)
+api_thread.start()
+time.sleep(1)
+apple_contract = Contract()
+apple_contract.symbol = 'AAPL'
+apple_contract.secType = 'STK'
+apple_contract.exchange = 'SMART'
+apple_contract.currency = 'USD'
+
+#Request Market Data
+#app.reqMktData(1, apple_contract, '', False, False, [])
+
+#time.sleep(10) #Sleep interval to allow time for incoming price data
+app.disconnect()
+from ibapi.ticktype import TickTypeEnum
+
+for i in range(91):
+	print(TickTypeEnum.to_str(i), i)
 
 ##### Alpha Vantage API Keys ######
 apiKey = "YU2WS3DFRZNOBW2Q"
@@ -40,40 +64,6 @@ apiKey13 = 'YPB0AWLC04BSYLCA'
 apiKey14 = 'IIDIQCUR0VQHF2K9'
 apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey10,apiKey11,apiKey12,apiKey13,apiKey14]
 
-############################################## Telegram Bot - @monymoney_bot ######################################################################
-def send_tele_message(message):
-    TOKEN = auth["TOKEN"]
-    chat_id = auth["chat_id"]
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
-    requests.get(url).json()
-
-=======
-auth = json.loads(open('Auth/auth.txt', 'r').read())
-
-class IBapi(EWrapper, EClient):
-     def __init__(self):
-         EClient.__init__(self, self) 
-
-app = IBapi()
-app.connect('127.0.0.1', 7497, 123)
-app.run()
-
-##### Alpha Vantage API Keys ######
-apiKey = "YU2WS3DFRZNOBW2Q"
-apiKey2= '7E01NY5AWTMML6AR'
-apiKey3 = 'TMJXU8UWCA0PYW4I'
-apiKey4 = 'GMORUOA5ANFIFLYB'
-apiKey5 = '6J3WYMQU1IBGY8JT'
-apiKey6 = 'Q7S5MY8BOZ30WU9F'
-apiKey7 = 'E7RSATAZGN09U7BF'
-apiKey8 = 'OJ3HYOQ5R6YQQ7HQ'
-apiKey9 = 'RXNCYRXC8HRE67VZ'
-apiKey10 ='4IZ6YCBLPVN2WF87'
-apiKey11 ='T16XJ7L29ZIC54F5'
-apiKey12 = 'T8KDAAX3DMF90GU8'
-apiKey13 = 'YPB0AWLC04BSYLCA'
-apiKey14 = 'IIDIQCUR0VQHF2K9'
-apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey10,apiKey11,apiKey12,apiKey13,apiKey14]
 
 ############################################## Telegram Bot - @monymoney_bot ######################################################################
 def send_tele_message(message):
@@ -82,7 +72,6 @@ def send_tele_message(message):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
     requests.get(url).json()
 
->>>>>>> e61df3058943171dd1b6248b14783d329e40c265
 
 ############################################## Pulling Alpha Vantage Data (Stock Data) ######################################################################
 def ts_daily_adjusted(ticker,key):
@@ -336,3 +325,4 @@ def wma(ticker,key):
     df = df.reset_index()
     df = df.rename(columns={'index':'Date'})
     return df
+# send_tele_message("test")
