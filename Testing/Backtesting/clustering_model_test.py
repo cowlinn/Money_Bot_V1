@@ -1,6 +1,8 @@
 ###Duplicated Darryl's clustering model to do a test ####
 
+import datetime
 import os
+import re
 import yfinance as yf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -681,9 +683,29 @@ def backtest_cache_ret(): #helper function to cache prev results into CSV file i
     assert(isinstance(pd_data, pd.DataFrame)) #idk I heard this might break so I check eh
     return pd_data
 
+#ty chatGPT
+def generate_random_date(start_date, end_date):
+    time_between_dates = end_date - start_date
+    random_number_of_days = random.randrange(time_between_dates.days)
+    random_date = start_date + datetime.timedelta(days=random_number_of_days)
+    return random_date
+
 
 def backtest_logic():
     historical = backtest_cache_ret()
+
+    start_dates = [datetime.datetime(2020, 1, 1), datetime.datetime(2021, 1, 1), datetime.datetime(2022, 1, 1)]
+    end_dates = [datetime.datetime(2020, 12, 31), datetime.datetime(2021, 12, 31), datetime.datetime(2022, 12, 31)]
+                 
+    for i in range(3): #LOL 3 years be testin
+        random_date = generate_random_date(start_date=start_dates[i], end_date=end_dates[i])
+
+        data_period_in_days = int(re.sub("[^0-9]", "", data_period)) #im gonna assume data period is in days
+        random_date_end = random_date + datetime.timedelta(days=data_period_in_days)
+
+
+        ##TODO: Make the prediction, then go backwards
+        ## Find end_date, then test
 
 
 
