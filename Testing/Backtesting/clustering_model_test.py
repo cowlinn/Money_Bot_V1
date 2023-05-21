@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import math
 import random
+
 # rough idea for clustering model
 # make a model based on time-clustering of peaks of higher order derivative percentage changes 
         # need to somehow identify clusters, whether we are in a cluster and what the next move of the cluster will be
