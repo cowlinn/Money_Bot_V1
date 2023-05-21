@@ -374,10 +374,10 @@ def anti_derivative_interpreter(x, dx, max_val_distribution):
 
 def main():
     stock_name = "SPY"
-    data_period = "10d"
-    resolution = "15m"
+    data_period = "30d"
+    resolution = "1h"
     time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
-    shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
+    shift = int(time_interval*7) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
     # formula for 1d resolution and for all integer time interval is int(time_interval)
     # formula for 1h resolution and integer day time interval is int(time_interval*7)
     # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
@@ -406,6 +406,17 @@ def main():
     # not sure what to do at this point?
     # if we just take the highest probability prediction,the magnitude is more or less right (for appropriate data)
     # but the direction can be wrong fairly often
+    
+    # temporary
+    y = pm_optimise(percentage_increase, 0.9)[0]
+    y = clst.f(y)[0]
+    plt.subplot(2,1,1)
+    plt.plot(range(len(y)), y)
+    plt.grid()
+    plt.subplot(2,1,2)
+    plt.plot(range(len(price)-len(y), len(price)), price[len(price)-len(y):])
+    plt.grid()
+    # maybe we should integrate the area under the clustering graph to detect price movements
     
     
     # temporary
