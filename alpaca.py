@@ -14,15 +14,15 @@ import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 
-auth = json.loads(open('Auth/auth.txt', 'r').read())
+auth = json.loads(open('Auth/col_auth.txt', 'r').read())
 
-class IBapi(EWrapper, EClient):
-     def __init__(self):
-         EClient.__init__(self, self) 
+# class IBapi(EWrapper, EClient):
+#      def __init__(self):
+#          EClient.__init__(self, self) 
 
-app = IBapi()
-app.connect('127.0.0.1', 7497, 123)
-app.run()
+# app = IBapi()
+# app.connect('127.0.0.1', 7497, 123)
+# app.run()
 
 
 ##### Alpha Vantage API Keys ######
@@ -302,3 +302,7 @@ def wma(ticker,key):
     df = df.reset_index()
     df = df.rename(columns={'index':'Date'})
     return df
+
+
+send_tele_message("hello_world")
+
