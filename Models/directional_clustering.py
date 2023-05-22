@@ -1,3 +1,4 @@
+import os
 import yfinance as yf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -102,3 +103,10 @@ increase_cluster_data = f(increase)[1]
 percentage_increase_cluster_data = f(percentage_increase)[1]
 shape_visual(percentage_increase, 'percentage increase', price)
 shape_visual(increase, 'increase', price)
+
+## for visualization purposes, put them next to each other on a CSV
+
+cache_fname = "historical/" + f"{stock_name}_compare_directional.csv"
+mega_chart = pd.concat((price, increase_cluster_data), axis=1)
+
+mega_chart.to_csv(cache_fname) 
