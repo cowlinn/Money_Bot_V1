@@ -101,6 +101,7 @@ def pmcheck(x): # check how often the values of a series oscillate between posit
 # cluster detection
 # NOTE: for high resolution data (1m or 2m granularity), this function is nearly useless as it picks up on noise as actual volatility
 # this only works well for 5min data onwards, though it works best for 15m imo
+# run f(x) to test! --> use chunky
 def f(x):
     x = abs(x).dropna()
     x_lst = x.tolist()
