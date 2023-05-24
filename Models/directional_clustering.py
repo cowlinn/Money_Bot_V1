@@ -198,6 +198,7 @@ buffer = 0
 while True:
     now = datetime.datetime.now()
     if now.minute%15 == 0 and now.second == 1:
+        print(now)
         time.sleep(0.7)
         info = main(stock_name, data_period, resolution, shift)
         increase_lst = info[1].tolist()
@@ -206,18 +207,27 @@ while True:
         if iteration_counter == 0:  # for first prediction
             prediction = info[0]
             iteration_counter += 1
-            time.sleep(0.3)
+            print('This is iteration 1')
+            time.sleep(0.4)
             continue
         if prediction > 0 and increase_lst[-1] > 0:
             record.append(1)
+            print('Good prediction!')
             prediction = info[0] # make a new prediction
         elif prediction < 0 and increase_lst[-1] < 0:
             record.append(1)
+            print('Good prediction!')
             prediction = info[0]
         else:
+            losses = random.randrange(1,69000000)
             record.append(0)
+            print('Bad prediction! You lost', losses, 'tendies!')
             prediction = info[0]
+        iteration_counter += 1
+        print('This is iteration', iteration_counter)
         buffer = increase_lst[-1]
+        time.sleep(0.4)
+
         
         
             
