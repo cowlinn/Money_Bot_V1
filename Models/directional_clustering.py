@@ -52,6 +52,53 @@ def f(x):
     # y is the cluster data
     return y_smooth, y_chunky, rolling_window
 
+# we can use the expect() function to judge how good the brainded strategy is wrt a given stock
+# for example expect(increase, -2) on MSFT returns -5.032 (good correlation, suggests that brainded strat works)
+# while expect(increase, -2) on TSLA returns 5.812 (bad correlation, do no use the strat)
+# it can also help us determine which magnitdues are actually useful in a given stock
+# for example expect(increase, 1) on MSFT returns 2.432 (good) while expect(increase, -1) on MSFT returns 0.678 (bad)
+def expect(x, current_val = 3):  # what cluster value do you want info for?
+    x_lst = x.tolist()
+    cluster_data = f(x)[1]
+    cluster_lst = cluster_data.tolist()
+    if current_val == 'latest':
+        print('The latest cluster value is', cluster_lst[-1])
+        current_val = cluster_lst[-1]
+    sample_size = 0
+    total = 0
+    for i in range(len(cluster_data)-1):
+        # for non-zero current_val (cluster values)
+        # I thought about using >= for cluster_data[i] here, but I would have to deal with 'positive' zero and 'negative' zero cases
+        # so nvm ah
+        # also this would be misleading because directional magnitude of 3 means something diff from magnitude of 5
+        # if current_val > 0 and cluster_data[i] >= current_val:  
+        #     sample_size += 1
+        #     total += x_lst[i+1]
+        # elif current_val < 0 and cluster_data[i] <= current_val:
+        #     sample_size += 1
+        #     total += x_lst[i+1]
+        
+        if cluster_data[i] == current_val:  
+            sample_size += 1
+            total += x_lst[i+1]
+
+        # usually current_val only == 0 if 'latest' is requested
+        # for 'positive' zeros
+        # if current_val == 0 and x_lst[-1] > 0:
+            
+    # NOTE: current_val = 0 usually does not returna useful result
+    # use expect(x, 'latest') with caution
+    print('Sample size is', sample_size)  # sample size of ~50 is ideal
+    if sample_size == 0:
+        print('No valid occurences of this cluster magnitude for given historical range')
+        return
+    expected_next_val = total/sample_size
+    # might want to return sample size and current_val if we are going to use this in another function
+    # makes it easier for computer to evaluate usefulness of information from this function
+    # but anyway sample size for non-zero stuff is usually small so wtv
+    return expected_next_val # expected next value of x
+    # also, if expected_next_val is close to zero, info is p much useless in terms of directionality
+
 def shape_visual(x, name, price): # plot the time dependence of a variable in one plot and the identified clusters in another plot
     y = f(x)[1]   # [0] is smoothed data, [1] is chunky data
     # tbh smooth shows price movements more accurately (can eliminate like 'irrelevant' volatility)
@@ -76,14 +123,15 @@ def shape_visual(x, name, price): # plot the time dependence of a variable in on
     plt.plot(range(len(price)), price)
     plt.show()
 
-stock_name = "TSLA"
-data_period = "1y"
-resolution = "1d"
-time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
+stock_name = "MSFT"
+data_period = "10d"
+resolution = "15m"
+time_interval = 1
 shift = int(time_interval) # converts time interval into however many 15 min blocks. Note that there are 6.5 trading hours in a trading day
 # formula for 1d resolution and for all integer time interval is int(time_interval)
 # formula for 1h resolution and integer day time interval is int(time_interval*7)
 # formula for 15m resolution and 1 day time interval is int(time_interval*6.5*4)
+# formula for 15m resolution and 1h time interval (=1) is int(time_interval*4)
 # formula for 15m resolution and 15m time interval (=1) is int(time_interval)
 # formula for 1m resolution and 1 day time interval is int(time_interval*6.5*60)     
 # formula for 1m resolution and 15 min time interval (1/(6.5*4)) is int(time_interval*6.5*60)
@@ -102,8 +150,10 @@ hist['increase'] = increase
 increase = increase.dropna()
 increase_cluster_data = f(increase)[1]
 percentage_increase_cluster_data = f(percentage_increase)[1]
+percentage_increase_cluster_data = f(percentage_increase)[1]
 shape_visual(percentage_increase, 'percentage increase', price)
 shape_visual(increase, 'increase', price)
+expect(increase, 'latest')
 
 ## for visualization purposes, put them next to each other on a CSV
 curr_day_to_string = datetime.date.today()
@@ -120,9 +170,9 @@ def get_offset(cluster, os_length):
     }, index=index)
     return new_offset_c
 
-increase_cluster_data_os = get_offset(increase_cluster_data, os_length=1)
+increase_cluster_data_os = get_offset(increase_cluster_data, os_length=shift)
 
-cache_fname = "historical/" + f"{stock_name}_compare_directional_{curr_day_to_string}.csv"
+cache_fname = "../historical/" + f"{stock_name}_compare_directional_{curr_day_to_string}.csv"
 mega_chart = pd.concat((price, increase_cluster_data_os), axis=1)[["Close", "Clusters"]]
 
 mega_chart.to_csv(cache_fname) 
