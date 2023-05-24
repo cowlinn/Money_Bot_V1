@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import math
 import random
+# import schedule
+import time
 
 def derivative(x):
     return x - x.shift()
@@ -150,7 +152,6 @@ hist['increase'] = increase
 increase = increase.dropna()
 increase_cluster_data = f(increase)[1]
 percentage_increase_cluster_data = f(percentage_increase)[1]
-percentage_increase_cluster_data = f(percentage_increase)[1]
 shape_visual(percentage_increase, 'percentage increase', price)
 shape_visual(increase, 'increase', price)
 expect(increase, 'latest')
@@ -176,3 +177,48 @@ cache_fname = "../historical/" + f"{stock_name}_compare_directional_{curr_day_to
 mega_chart = pd.concat((price, increase_cluster_data_os), axis=1)[["Close", "Clusters"]]
 
 mega_chart.to_csv(cache_fname) 
+
+def main(stock_name, data_period, resolution, shift):
+    stock = yf.Ticker(stock_name)  # this goes in main()
+    hist = stock.history(period = data_period, interval = resolution) # historical price data
+    price = hist['Close']
+    increase = price - price.shift(shift)
+    increase = increase.dropna()
+    increase_cluster_data = f(increase)[1]
+    prediction = expect(increase, 'latest')
+    if prediction > 0:
+        return 1, increase
+    else:
+        return -1, increase
+
+iteration_counter = 0
+record = []  # after letting the program run to completion, we should have a list of all prediction results
+# and we can do sum(records)/len(records) to find the winrate
+buffer = 0
+while True:
+    now = datetime.datetime.now()
+    if now.minute%15 == 0 and now.second == 1:
+        time.sleep(0.7)
+        info = main(stock_name, data_period, resolution, shift)
+        increase_lst = info[1].tolist()
+        if buffer == increase_lst[-1]: # if the last coord was the same, trading has ended
+            break
+        if iteration_counter == 0:  # for first prediction
+            prediction = info[0]
+            iteration_counter += 1
+            time.sleep(0.3)
+            continue
+        if prediction > 0 and increase_lst[-1] > 0:
+            record.append(1)
+            prediction = info[0] # make a new prediction
+        elif prediction < 0 and increase_lst[-1] < 0:
+            record.append(1)
+            prediction = info[0]
+        else:
+            record.append(0)
+            prediction = info[0]
+        buffer = increase_lst[-1]
+        
+        
+            
+        
