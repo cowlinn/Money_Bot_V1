@@ -1,3 +1,4 @@
+import datetime
 import os
 import yfinance as yf
 import numpy as np
@@ -75,7 +76,7 @@ def shape_visual(x, name, price): # plot the time dependence of a variable in on
     plt.plot(range(len(price)), price)
     plt.show()
 
-stock_name = "msft"
+stock_name = "TSLA"
 data_period = "1y"
 resolution = "1d"
 time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
@@ -105,8 +106,23 @@ shape_visual(percentage_increase, 'percentage increase', price)
 shape_visual(increase, 'increase', price)
 
 ## for visualization purposes, put them next to each other on a CSV
+curr_day_to_string = datetime.date.today()
+def get_offset(cluster, os_length):
+    l = [-69 for i in range(os_length)] #-69 is an arbitrary int value for offset
+    ratio = cluster.tolist()
+    vals = l + ratio
+    #new_offset_c = pd.concat((pd.DataFrame(l), cluster), axis = 0).reindex() #concat row_wise
+    index = [i for i in range(len(vals))]
 
-cache_fname = "historical/" + f"{stock_name}_compare_directional.csv"
-mega_chart = pd.concat((price, increase_cluster_data), axis=1)
+    new_offset_c = pd.DataFrame({
+        'y': index,
+        'Clusters': vals
+    }, index=index)
+    return new_offset_c
+
+increase_cluster_data_os = get_offset(increase_cluster_data, os_length=1)
+
+cache_fname = "historical/" + f"{stock_name}_compare_directional_{curr_day_to_string}.csv"
+mega_chart = pd.concat((price, increase_cluster_data_os), axis=1)[["Close", "Clusters"]]
 
 mega_chart.to_csv(cache_fname) 
