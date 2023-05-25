@@ -66,6 +66,9 @@ def expect(x, current_val = 3):  # what cluster value do you want info for?
     if current_val == 'latest':
         print('The latest cluster value is', cluster_lst[-1])
         current_val = cluster_lst[-1]
+        
+    if current_val == 0:
+        return 0
     sample_size = 0
     total = 0
     for i in range(len(cluster_data)-1):
@@ -186,6 +189,8 @@ def main(stock_name, data_period, resolution, shift):
     increase = increase.dropna()
     increase_cluster_data = f(increase)[1]
     prediction = expect(increase, 'latest')
+    if prediction == 0:
+        return 0
     if prediction > 0:
         return 1, increase
     else:
@@ -195,38 +200,50 @@ iteration_counter = 0
 record = []  # after letting the program run to completion, we should have a list of all prediction results
 # and we can do sum(records)/len(records) to find the winrate
 buffer = 0
+trading_over = False
 while True:
     now = datetime.datetime.now()
-    if now.minute%15 == 0 and now.second == 1:
-        print(now)
-        time.sleep(0.7)
-        info = main(stock_name, data_period, resolution, shift)
-        increase_lst = info[1].tolist()
-        if buffer == increase_lst[-1]: # if the last coord was the same, trading has ended
-            break
-        if iteration_counter == 0:  # for first prediction
-            prediction = info[0]
-            iteration_counter += 1
-            print('This is iteration 1')
-            time.sleep(0.4)
-            continue
-        if prediction > 0 and increase_lst[-1] > 0:
-            record.append(1)
-            print('Good prediction!')
-            prediction = info[0] # make a new prediction
-        elif prediction < 0 and increase_lst[-1] < 0:
-            record.append(1)
-            print('Good prediction!')
-            prediction = info[0]
-        else:
-            losses = random.randrange(1,69000000)
-            record.append(0)
-            print('Bad prediction! You lost', losses, 'tendies!')
-            prediction = info[0]
-        iteration_counter += 1
-        print('This is iteration', iteration_counter)
-        buffer = increase_lst[-1]
-        time.sleep(0.4)
+    if now.hour == 21 and now.minute == 30:
+        while True:
+            now = datetime.datetime.now()
+            if now.minute%15 == 0 and now.second == 1:
+                print(now)
+                time.sleep(0.7)
+                info = main(stock_name, data_period, resolution, shift)
+                increase_lst = info[1].tolist()
+                if buffer == increase_lst[-1]: # if the last coord was the same, trading has ended
+                    break
+                if iteration_counter == 0:  # for first prediction
+                    prediction = info[0]
+                    iteration_counter += 1
+                    print('This is iteration 1')
+                    time.sleep(0.4)
+                    continue
+                if prediction == 0:
+                    print('No valid prediction!')
+                    prediction = info[0]
+                    time.sleep(0.4)
+                    continue
+                if prediction > 0 and increase_lst[-1] > 0:
+                    record.append(1)
+                    print('Good prediction!')
+                    prediction = info[0] # make a new prediction
+                elif prediction < 0 and increase_lst[-1] < 0:
+                    record.append(1)
+                    print('Good prediction!')
+                    prediction = info[0]
+                else:
+                    losses = random.randrange(1,69000000)
+                    record.append(0)
+                    print('Bad prediction! You lost', losses, 'tendies!')
+                    prediction = info[0]
+                iteration_counter += 1
+                print('This is iteration', iteration_counter)
+                buffer = increase_lst[-1]
+                time.sleep(0.4)
+        trading_over = True
+    if trading_over:
+        break
 
         
         
