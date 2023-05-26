@@ -190,7 +190,7 @@ def main(stock_name, data_period, resolution, shift):
     increase_cluster_data = f(increase)[1]
     prediction = expect(increase, 'latest')
     if prediction == 0:
-        return 0
+        return 0, increase
     if prediction > 0:
         return 1, increase
     else:
@@ -209,7 +209,7 @@ while True:
             if now.minute%15 == 0 and now.second == 1:
                 print(now)
                 time.sleep(0.7)
-                info = main(stock_name, data_period, resolution, shift)
+                info = main(stock_name, data_period, resolution, shift) 
                 increase_lst = info[1].tolist()
                 if buffer == increase_lst[-1]: # if the last coord was the same, trading has ended
                     break
