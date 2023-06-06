@@ -31,6 +31,9 @@ def MACDstrat(price):
     latest_macd = macd[2][-1]
     previous_macd = macd[2][-2]
     cross = 0
+    # bruh this is just setting cross to 0 every time we call the function??
+    # pls fix this so that it actually remembers what the previous cross was
+    # or add some way to recognize if this is the first time the function is called, then set cross to be 1 or -1
     
     # first trade of the day
     if cross == 0:
@@ -43,6 +46,7 @@ def MACDstrat(price):
         elif previous_macd < 0 and latest_macd > 0:
             cross = 1
             print('Buy a call!') # execute some buy order
+            
     
     # if the last trade we entered was buying a put
     elif cross == -1:
@@ -63,18 +67,19 @@ def MACDstrat(price):
     return macd[2][-1] # for now it just returns the latest macd value
 
 # visualisation purposes, uncomment to view MACD graphs
-# macd = ta.MACD(price)
-# x_vals = range(len(macd[0]))
-# plt.subplot(2,1,1)
-# plt.title('MACD graph for '+ stock_name)
-# plt.plot(x_vals, macd[0]) # blue line
-# plt.plot(x_vals, macd[1]) # orange line
-# plt.grid()
+
+macd = ta.MACD(price)
+x_vals = range(len(macd[0]))
+plt.subplot(2,1,1)
+plt.title('MACD graph for '+ stock_name)
+plt.plot(x_vals, macd[0]) # blue line
+plt.plot(x_vals, macd[1]) # orange line
+plt.grid()
 
 
-# plt.subplot(2,1,2)
-# plt.plot(x_vals, macd[2])
-# plt.grid()
+plt.subplot(2,1,2)
+plt.plot(x_vals, macd[2])
+plt.grid()
 
 def caveman_loop():
     buffer = 0
