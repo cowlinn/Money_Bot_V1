@@ -30,6 +30,8 @@ def MACDstrat(price):
     # if macd[2] goes from < 0 to > 0, that is considered a cross upwards, signalling a likely rise in share price
     latest_macd = macd[2][-1]
     previous_macd = macd[2][-2]
+    # print(latest_macd)
+    # print(previous_macd)
     cross = 0
     # bruh this is just setting cross to 0 every time we call the function??
     # pls fix this so that it actually remembers what the previous cross was
@@ -41,12 +43,13 @@ def MACDstrat(price):
         if previous_macd > 0 and latest_macd < 0:
             cross = -1
             print('Buy a put!') # execute some buy order
+            return('Buy a put!', macd[2][-1])
         
         # cross upwards
         elif previous_macd < 0 and latest_macd > 0:
             cross = 1
             print('Buy a call!') # execute some buy order
-            
+            return('Buy a call!', macd[2][-1])
     
     # if the last trade we entered was buying a put
     elif cross == -1:
@@ -64,7 +67,7 @@ def MACDstrat(price):
     # need some other if statement to detect if the trade is past a certain point in the day
     # or just close all positions if time > 3pm US time?
     # or maybe don't enter any trades past 2pm US time?
-    return macd[2][-1] # for now it just returns the latest macd value
+    return ('No crossover.', macd[2][-1]) # for now it just returns the latest macd value
 
 # visualisation purposes, uncomment to view MACD graphs
 
@@ -86,15 +89,17 @@ def caveman_loop():
     while True:
         now = datetime.datetime.now()
         if now.minute%5 == 0:
-            time.sleep(1) # 1 second for yahoo finance to update lmao (may be unnecessary?)
+            time.sleep(3) # 1 second for yahoo finance to update lmao (may be unnecessary?)
             # call the data
+            stock = yf.Ticker("SPY")
             price = stock.history(period = '2d', interval = '5m')['Close']
             macd = MACDstrat(price)
             print(now)
+            print('Price is ' + str(round(price[-1], 3)) + '.', macd[0])
             time.sleep(60)
-            if buffer == macd:
+            if buffer == macd[1]:
                 break
-            buffer = macd
+            buffer = macd[1]
                 
             
             
