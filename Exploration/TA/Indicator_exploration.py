@@ -112,19 +112,22 @@ def checkwin(option, movement, threshold = 0.5):
         else:
             print('Bad Trade!\n')
             return False
-hist.reset_index(inplace=True) # converts datetime to a column
-call = False
-put = False
+
+put_buying_threshold = 45
+call_buying_threshold = 40
+threshold = 0.5 # minimum magnitude of price movement we are trying to capture
 purchase_time = 0
 underlying_purchase_price = 0
 underlying_selling_price = 0
 wins = 0
 losses = 0
-threshold = 0.5 # minimum magnitude of price movement we are trying to capture
 total_movement = 0
 total_trade_time = 0
 p_time = 0
 trade_time_hour = 0
+call = False
+put = False
+hist.reset_index(inplace=True) # converts datetime to a column
 for i in range(40, len(hist)):
     current_data = hist.iloc[i]
     previous_data = hist.iloc[i-1]
@@ -168,7 +171,7 @@ for i in range(40, len(hist)):
     
     if current_data['MACD'] > 0 and previous_data['MACD'] < 0 and call == False:
         print('\nUpwards cross at', current_data['Datetime'])
-        if current_data['RSI_SMA'] < 45 and current_data['MFI'] < 40:
+        if current_data['RSI_SMA'] < 45 and current_data['MFI'] < call_buying_threshold:
             print('Buy a Call!\n')
             call = True
             purchase_time = current_data['Datetime']
@@ -195,7 +198,7 @@ for i in range(40, len(hist)):
 
     if current_data['MACD'] < 0 and previous_data['MACD'] > 0 and put == False:
         print('\nDownwards cross at', current_data['Datetime'])
-        if current_data['RSI_SMA'] > 55 and current_data['MFI'] > 45: # using the talib MFI, 45 is the best threshold
+        if current_data['RSI_SMA'] > 55 and current_data['MFI'] > put_buying_threshold: # using the talib MFI, 45 is the best threshold
             print('Buy a Put!\n')
             put = True
             purchase_time = current_data['Datetime']
@@ -261,6 +264,225 @@ print('\nWinrate of ' + str(winrate)+'% across', total_trades,'trades')
 print('Average magnitude of price movement captured is $' + str(mean_movement))
 print('Average trade duration is', mean_trade_time_hour, 'hour(s) and ', mean_trade_time_minute, 'minutes')
 
+############ callable function ####################
+def backtest(hist, threshold = 0.5, call_buying_threshold = 40, put_buying_threshold = 45, call_selling_threshold = 65, put_selling_threshold = 35, rsi_buy = 45, rsi_sell = 60):
+    purchase_time = 0
+    underlying_purchase_price = 0
+    underlying_selling_price = 0
+    wins = 0
+    losses = 0
+    total_movement = 0
+    total_trade_time = 0
+    p_time = 0
+    trade_time_hour = 0
+    call = False
+    put = False
+    # hist.reset_index(inplace=True) # converts datetime to a column
+    for i in range(40, len(hist)):
+        current_data = hist.iloc[i]
+        previous_data = hist.iloc[i-1]
+        current_hour = int(str(current_data['Datetime']).split()[1][0:2])
+        current_minute = int(str(current_data['Datetime']).split()[1][3:5])
+        # print(current_hour, current_data['Datetime'])
+        # print(put, current_hour, current_data['RSI'],current_data['MFI'])
+        
+        # close any open poisition by end of day
+        if call and current_hour > 14 and current_minute > 45:
+            call = False
+            print('It is currently ' + str(current_data['Datetime']) + '. Sell the call purchased at ' + str(purchase_time))
+            underlying_selling_price = current_data['Close']
+            movement = round(underlying_selling_price-underlying_purchase_price, 2)
+            total_movement += abs(movement)
+            trade_time_hour = current_hour-p_time[0] + (current_minute-p_time[1])/60
+            total_trade_time += trade_time_hour
+            print(str(movement)+' dollars of price movement captured')
+            if checkwin('Call', movement, threshold):
+                wins += 1
+            else:
+                losses += 1
+
+        if put and current_hour > 14 and current_minute > 45:
+            put = False
+            print('It is currently ' + str(current_data['Datetime']) + '. Sell the put purchased at ' + str(purchase_time))
+            underlying_selling_price = current_data['Close']
+            movement = round(underlying_selling_price-underlying_purchase_price, 2)
+            total_movement += abs(movement)
+            trade_time_hour = current_hour-p_time[0] + (current_minute-p_time[1])/60
+            total_trade_time += trade_time_hour
+            print(str(movement)+' dollars of price movement captured')
+            if checkwin('Put', movement, threshold):
+                wins += 1
+            else:
+                losses += 1
+
+        if current_hour > 13: # do not enter trades after 2pm
+            # print(current_data['Datetime'])
+            continue
+        
+        if current_data['MACD'] > 0 and previous_data['MACD'] < 0 and call == False:
+            print('\nUpwards cross at', current_data['Datetime'])
+            if current_data['RSI_SMA'] < rsi_buy and current_data['MFI'] < call_buying_threshold:
+                print('Buy a Call!\n')
+                call = True
+                purchase_time = current_data['Datetime']
+                p_time = (current_hour, current_minute)
+                underlying_purchase_price = current_data['Close']
+            
+            # exit the position if opposite crossover happens
+            # if put:
+            #     put = False
+            #     print('It is currently ' + str(current_data['Datetime']) + '. Sell the put purchased at ' + str(purchase_time))
+            #     underlying_selling_price = current_data['Close']
+            #     movement = round(underlying_selling_price-underlying_purchase_price, 2)
+            #     total_movement += abs(movement)
+            #     trade_time_hour = current_hour-p_time[0] + (current_minute-p_time[1])/60
+            #     total_trade_time += trade_time_hour
+            #     print(str(movement)+' dollars of price movement captured')
+            #     if checkwin('Put', movement, threshold):
+            #         wins += 1
+            #     else:
+            #         losses += 1
+                continue
+            # aparently not doing this gives a better winrate wtf
+
+
+        if current_data['MACD'] < 0 and previous_data['MACD'] > 0 and put == False:
+            print('\nDownwards cross at', current_data['Datetime'])
+            if current_data['RSI_SMA'] > 100-rsi_buy and current_data['MFI'] > put_buying_threshold: # using the talib MFI, 45 is the best threshold
+                print('Buy a Put!\n')
+                put = True
+                purchase_time = current_data['Datetime']
+                p_time = (current_hour, current_minute)
+                underlying_purchase_price = current_data['Close']
+            
+            # exit the position if opposite crossover happens
+            # if call:
+            #     call = False
+            #     print('It is currently ' + str(current_data['Datetime']) + '. Sell the call purchased at ' + str(purchase_time))
+            #     underlying_selling_price = current_data['Close']
+            #     movement = round(underlying_selling_price-underlying_purchase_price, 2)
+            #     total_movement += abs(movement)
+            #     trade_time_hour = current_hour-p_time[0] + (current_minute-p_time[1])/60
+            #     total_trade_time += trade_time_hour
+            #     print(str(movement)+' dollars of price movement captured')
+            #     if checkwin('Call', movement, threshold):
+            #         wins += 1
+            #     else:
+            #         losses += 1
+            continue
+            # aparently not doing this gives a better winrate wtf
+
+                
+        if call and current_data['RSI'] > rsi_sell and current_data['MFI'] > call_selling_threshold:
+            print('It is currently ' + str(current_data['Datetime']) + '. Sell the call purchased at ' + str(purchase_time))
+            call = False
+            underlying_selling_price = current_data['Close']
+            movement = round(underlying_selling_price-underlying_purchase_price, 2)
+            total_movement += abs(movement)
+            trade_time_hour = current_hour-p_time[0] + (current_minute-p_time[1])/60
+            total_trade_time += trade_time_hour
+            print(str(movement)+' dollars of price movement captured')
+            if checkwin('Call', movement, threshold):
+                wins += 1
+            else:
+                losses += 1
+
+                
+        if put and current_data['RSI'] < 100-rsi_sell and current_data['MFI'] < put_selling_threshold:
+            print('It is currently ' + str(current_data['Datetime']) + '. Sell the put purchased at ' + str(purchase_time))
+            put = False
+            underlying_selling_price = current_data['Close']
+            movement = round(underlying_selling_price-underlying_purchase_price, 2)
+            total_movement += abs(movement)
+            trade_time_hour = current_hour-p_time[0] + (current_minute-p_time[1])/60
+            total_trade_time += trade_time_hour
+            print(str(movement)+' dollars of price movement captured')
+            if checkwin('Put', movement, threshold):
+                wins += 1
+            else:
+                losses += 1
+        # print(trade_time_hour)
+
+    
+    total_trades = wins + losses
+    if total_trades == 0:
+        return 0
+    winrate = round((wins/(wins + losses))*100, 2)
+    mean_movement = round(total_movement/total_trades, 2)
+    mean_trade_time = round(total_trade_time/total_trades, 2)
+    mean_trade_time_minute = round(mean_trade_time%1 * 60)
+    mean_trade_time_hour = math.floor(mean_trade_time)
+    # print(total_trade_time)
+    print('\nWinrate of ' + str(winrate)+'% across', total_trades,'trades')
+    print('Average magnitude of price movement captured is $' + str(mean_movement))
+    print('Average trade duration is', mean_trade_time_hour, 'hour(s) and ', mean_trade_time_minute, 'minutes')
+    return winrate
+
+# WARNING: if extensive_test is True, number of iterations will be (end_range-start_range)**2**2**2**2
+# note: it takes forever to train if start_range=10 and end_range=90
+# but the result is (13, 89) with literally 1 trade in 30 days
+# others with 100% win: all the x,89 ones, 
+# could probably give an option to iterate in intervals of 2 or 5 to shorten training time
+# aside from that, the best params for the options buying threshold are (40, 89) with 90% winrate and 10 trades in 30 days
+# for statistical significance, we should probably stick with (40, 45) with 63% winrate and 30 trades in 30 days
+
+# after adding buying thresholds
+# ok final best extensive test for start_range = 35, end_range = 65, interval = 5 is (40, 45, 35, 35)
+# can probably add in RSI threshold optimisation also?
+def iterative_test(hist, start_range = 35, end_range = 65, extensive_test = False, interval=1):
+    hist.reset_index(inplace=True) # converts datetime to a column
+    test_log = {}
+    iterr = range(start_range,end_range,interval)
+    if extensive_test:
+        test_log = {}
+        for i in iterr:
+            for k in iterr:
+                for a in iterr:
+                    for b in iterr:
+                        for c in iterr:
+                            for d in iterr:
+                                test_log[(i,k, a, b, c, d)] = backtest(hist, put_buying_threshold = k, call_buying_threshold = i, call_selling_threshold=a, put_selling_threshold=b, rsi_buy = c, rsi_sell = d)
+        best_threshold = max(test_log, key = test_log.get)
+        return(best_threshold)
+
+    # find the best put_buying_threshold
+    for i in iterr:
+        test_log[i] = backtest(hist, put_buying_threshold = i)
+    best_put_buying_threshold = max(test_log, key = test_log.get)
+    
+    # find the best call_buying_threshold
+    test_log = {}
+    for i in iterr:
+        test_log[i] = backtest(hist, call_buying_threshold = i)
+    best_call_buying_threshold = max(test_log, key = test_log.get)
+
+    # find the best call_selling_threshold
+    test_log = {}
+    for i in iterr:
+        test_log[i] = backtest(hist, call_selling_threshold = i)
+    best_call_selling_threshold = max(test_log, key = test_log.get)
+    
+    # find the best put_selling_threshold
+    test_log = {}
+    for i in iterr:
+        test_log[i] = backtest(hist, put_selling_threshold = i)
+    best_put_selling_threshold = max(test_log, key = test_log.get)
+    
+    # find the best rsi_buy
+    test_log = {}
+    for i in iterr:
+        test_log[i] = backtest(hist, rsi_buy = i)
+    best_rsi_buy = max(test_log, key = test_log.get)
+
+    # find the best rsi_sell
+    test_log = {}
+    for i in iterr:
+        test_log[i] = backtest(hist, rsi_sell = i)
+    best_rsi_sell = max(test_log, key = test_log.get)
+
+    return (best_call_buying_threshold, best_put_buying_threshold, best_call_selling_threshold, best_put_selling_threshold, best_rsi_buy, best_rsi_sell)
+
+
 
 ################# backtest results ##################
 # 5 min data, spy, 30 days of data
@@ -274,7 +496,7 @@ print('Average trade duration is', mean_trade_time_hour, 'hour(s) and ', mean_tr
     # Winrate of 52.38% across 21 trades
     # Average magnitude of price movement captured is $1.04
     # Average trade duration is 1 hour(s) and  55 minutes
-# stay in a position even if opposite crossover happens but only can make one trade at a time:
+# stay in a position even if opposite crossover happens, only can make one trade at a time:
     # Winrate of 50.0% across 20 trades
     # Average magnitude of price movement captured is $1.21
     # Average trade duration is 3 hour(s) and  6 minutes
@@ -285,7 +507,7 @@ print('Average trade duration is', mean_trade_time_hour, 'hour(s) and ', mean_tr
     # Winrate of 50.0% across 38 trades
     # Average magnitude of price movement captured is $1.08
     # Average trade duration is 1 hour(s) and  37 minutes
-# stay in a position even if opposite crossover happens but only can make one trade at a time:
+# stay in a position even if opposite crossover happens, only can make one trade at a time:
     # Winrate of 63.33% across 30 trades
     # Average magnitude of price movement captured is $1.41
     # Average trade duration is 2 hour(s) and  55 minutes
