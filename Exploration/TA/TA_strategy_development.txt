@@ -56,3 +56,4 @@ conclusions from preliminary backtesting of the most developed strategy so far:
 		- larger granularity means fewer trades, but better accuracy and larger price movements captured
 		- with a higher trading frequency, we can say that the expected winrate from backtesting is more reliable (smaller error)
 		- granularity of anything smaller than 5 min is rubbish (so that leaves us with 5min (ideal) and 15min for intraday trades)
+	- each ticker needs its own optimised model (using the threshold params for SPY for TSLA gives awful results)
