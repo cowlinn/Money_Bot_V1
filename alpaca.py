@@ -25,6 +25,7 @@ auth = json.loads(open('Auth/col_auth.txt', 'r').read())
 # app.run()
 
 
+
 ##### Alpha Vantage API Keys ######
 apiKey = "YU2WS3DFRZNOBW2Q"
 apiKey2= '7E01NY5AWTMML6AR'
