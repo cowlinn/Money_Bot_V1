@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import math
 stock_name = "SPY"
-data_period = "30d"
+data_period = "5d"
 resolution = "5m"
 stock = yf.Ticker(stock_name)  # this goes in main()
 hist = stock.history(period = data_period, interval = resolution) # historical price data
