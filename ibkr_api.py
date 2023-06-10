@@ -171,12 +171,16 @@ def check_for_trade(df, contract):
 #Create order object
 order = Order()
 order.action = 'BUY'
-order.totalQuantity = 100000
+
+order.totalQuantity = 10000
+
 order.orderType = 'LMT'
 order.lmtPrice = '1.10'
 order.orderId = app.nextorderId
 app.nextorderId += 1
 order.transmit = False
+order.eTradeOnly = False
+order.firmQuoteOnly = False
 
 #Create stop loss order object
 stop_order = Order()

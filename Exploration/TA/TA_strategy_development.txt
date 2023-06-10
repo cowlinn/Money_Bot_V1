@@ -1,0 +1,59 @@
+Each observation will be followed by a hypothesis and a possible strategy we can execute.
+
+Observation:
+MACD is good at telling us (the money_b0t) when to enter a trade, but it can't really tell the bot when to exit. Often times, if we just wait until the next crossover, we will be at the start of the next directional move (against our current position).
+
+Hypothesis:
+Use the RSI to tell us when to exit trades.
+
+Strategy:
+step 1: identify start of a price movement using MACD (crossovers)
+step 2: identify when to get out using RSI
+	- for calls, have some upper threshold (60 or 65?) at which we will exit the trade
+	- for puts, have some lower threhsold (40 or 35?) at which we will exit the trade
+
+Drawbacks:
+Not that effective lmao
+
+
+Observation:
+MACD has quite a few false positives (either rapid crossovers or identifying sluggish price movement that we do not want to trade on)
+
+Hypothesis:
+Use the RSI to tell us when to enter as well?
+
+Strategy:
+step 1: identify start of a price movement using MACD (crossovers)
+step 2: check if moving average of RSI is above 55 (for downwards price movements buying puts) or below 45 (for upwards price movemnt buying calls)
+step 3: identify when to get out using RSI
+	- for calls, have some upper RSI threshold (60) at which we will exit the trade
+	- for puts, have some lower RSI threhsold (40) at which we will exit the trade
+	- if a crossover happens before RSI hits thresholds, just exit the trade
+
+Drawbacks:
+Does not work on super volatile regions (lots of up and down movements but general trend is sideways)
+idk though high volatility might drive up option prices anyway? so this might not be a big issue
+
+Remedy:
+Use MFI as in addition to RSI
+
+Strategy:
+step 1: identify start of a price movement using MACD (crossovers)
+step 2: check if moving average of RSI is above 55 (for downwards price movements buying puts) or below 45 (for upwards price movemnt buying calls)
+step 3: check if MFI is above 60 (for downwards price price movements buying puts) or below 40 (for upwards price movements buying calls)
+step 4: identify when to get out using RSI and MFI
+	- if a crossover happens before any thresholds, just exit the trade
+	- for calls, have some upper RSI threshold (60) AND some upper MFI threshold (65) at which we will exit the trade
+	- for puts, have some lower RSI threhsold (40) AND some lower MFI threshold (35) at which we will exit the trade
+
+
+conclusions from preliminary backtesting of the most developed strategy so far:
+	- TAlib's MFI is fucked (or at least very different from the TradingView one)
+	- it is not actually useful to exit a trade if an opposing crossover happens (might be an issue from the MFI?
+	- we cannot trade only based on the MACD + RSI and its moving average (winrate of 30% or something)
+	- granularity of data really matters
+		- smaller granularity means more frequent trades, slightly lower winrate, smaller price movements captured
+		- larger granularity means fewer trades, but better accuracy and larger price movements captured
+		- with a higher trading frequency, we can say that the expected winrate from backtesting is more reliable (smaller error)
+		- granularity of anything smaller than 5 min is rubbish (so that leaves us with 5min (ideal) and 15min for intraday trades)
+	- each ticker needs its own optimised model (using the threshold params for SPY for TSLA gives awful results)
