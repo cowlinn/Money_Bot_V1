@@ -374,6 +374,7 @@ def anti_derivative_interpreter(x, dx, max_val_distribution):
 
 def main():
     stock_name = "SPY"
+
     data_period = "30d"
     resolution = "1h"
     time_interval = 1 # time interval from today in days (when do we want to hit the target price?)
@@ -417,7 +418,6 @@ def main():
     plt.plot(range(len(price)-len(y), len(price)), price[len(price)-len(y):])
     plt.grid()
     # maybe we should integrate the area under the clustering graph to detect price movements
-    
     
     # temporary
     return(predicted_percentage_increase_dist)
