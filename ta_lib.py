@@ -1,16 +1,15 @@
 import numpy as np
 import pandas as pd
 import talib
-import yfinance as yf
+# import yfinance as yf
 
-
+"""""
 symbol = "AAPL"
-start_date = "2023-05-01"
-end_date = "2023-05-31"
-interval = "15m"
+data_period = '21d'
+interval = "1h"
 
 # Retrieve intraday price data using Yahoo Finance API
-df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+df = yf.Ticker(symbol).history(period = data_period, interval=interval)
 
 df["AD"] = talib.AD(df["High"], df["Low"], df["Close"], df["Volume"])
 df["ADOSC"] = talib.ADOSC(df["High"], df["Low"], df["Close"], df["Volume"], fastperiod=3, slowperiod=10)
@@ -31,7 +30,7 @@ df["SAR"] = talib.SAR(df["High"], df["Low"], acceleration=0.02, maximum=0.2)
 df["STOCH_slowk"], df["STOCH_slowd"] = talib.STOCH(df["High"], df["Low"], df["Close"], fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
 df["TRIX"] = talib.TRIX(df["Close"], timeperiod=30)
 df["WCLPRICE"] = talib.WCLPRICE(df["High"], df["Low"], df["Close"])
-
+"""
 
 
 #############################################################################################################################################################################################
@@ -121,29 +120,25 @@ def beta_strategy(data):
     return data
 
 def macd_strategy(data):
-    macd, macd_signal, _ = talib.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9) 
-    macd_ext, _, _ = talib.MACDEXT(data['Close'], fastperiod=12, fastmatype=1, slowperiod=26, slowmatype=1, signalperiod=9)  # Calculate MACD with Extended Moving Average Types
-    macd_fix, _, _ = talib.MACDFIX(data['Close'], signalperiod=9)  # Calculate MACD with Fixed Moving Average Type
-
-    data['buy_signal_macd'] = np.where(macd > macd_signal, 1, 0)
-    data['sell_signal_macd'] = np.where(macd < macd_signal, -1, 0)
-
-    data['buy_signal_macd_ext'] = np.where(macd_ext > 0, 1, 0)
-    data['sell_signal_macd_ext'] = np.where(macd_ext < 0, -1, 0)
-
-    data['buy_signal_macd_fix'] = np.where(macd_fix > 0, 1, 0)
-    data['sell_signal_macd_fix'] = np.where(macd_fix < 0, -1, 0)
-
-    return data
-
+    macd = talib.MACD(data['Close'])[2]
+    latest_val = macd.iloc[-1]
+    previous_val = macd.iloc[-2]
+    if latest_val > 0 and previous_val < 0:
+        return 1
+    if latest_val < 0 and previous_val > 0:
+        return -1
+    else:
+        return 0
 
 def mfi_strategy(data):
-    data['mfi'] = talib.MFI(data['High'], data['Low'], data['Close'], data['Volume'], timeperiod=14)  
-
-    data['buy_signal'] = np.where((data['mfi'] < 20) & (data['mfi'].shift(1) < 20), 1, 0)
-    data['sell_signal'] = np.where((data['mfi'] > 80) & (data['mfi'].shift(1) > 80), -1, 0)
-
-    return data
+    MFI = talib.MFI(data['High'], data['Low'], data['Close'], data['Volume'], timeperiod=14)  
+    latest_val = MFI.iloc[-1]
+    if latest_val > 80:
+        return -1
+    elif latest_val < 20:
+        return 1
+    else:
+        return 0
 
 
 def roc_strategy(data):
@@ -168,12 +163,26 @@ def roc_strategy(data):
 
 
 def rsi_strategy(data):
-    data['rsi'] = talib.RSI(data['Close'], timeperiod=14) 
+    RSI = talib.RSI(data['Close'], timeperiod=14)
+    latest_val = RSI.iloc[-1]
+    if latest_val < 30:
+        return 1
+    elif latest_val >70:
+        return -1
+    else:
+        return 0
 
-    data['buy_signal'] = np.where((data['rsi'] < 30) & (data['rsi'].shift(1) < 30), 1, 0)
-    data['sell_signal'] = np.where((data['rsi'] > 70) & (data['rsi'].shift(1) > 70), -1, 0)
-
-    return data
+def rsi_sma_strategy(data):
+    RSI = talib.RSI(data['Close'], timeperiod=14)
+    rolling_window = 14
+    RSI_sma = pd.Series(RSI).rolling(rolling_window).mean() # SMA of RSI over 14 periods
+    latest_val = RSI_sma.iloc[-1]
+    if latest_val < 30:
+        return 1
+    elif latest_val >70:
+        return -1
+    else:
+        return 0
 
 
 def sar_strategy(data):
@@ -195,19 +204,22 @@ def stochrsi_strategy(data):
 
 
 def trix_strategy(data):
-    data['trix'] = talib.TRIX(data['Close'], timeperiod=12) 
+    TRIX = talib.TRIX(data['Close'], timeperiod=18) 
+    latest_val = TRIX.iloc[-1]
+    previous_val = TRIX.iloc[-2]
+    if latest_val > 0 and previous_val < 0:
+        return 1
+    if latest_val < 0 and previous_val > 0:
+        return -1
+    else:
+        return 0
 
-    # Determine buy/sell signals
-    data['buy_signal'] = np.where(data['trix'] > 0, 1, 0)
-    data['sell_signal'] = np.where(data['trix'] < 0, -1, 0)
-
-    return data
-
-
-def williamsr_strategy(data):
-    data['williamsr'] = talib.WILLR(data['High'], data['Low'], data['Close'], timeperiod=14)  
-
-    data['buy_signal'] = np.where(data['williamsr'] < -80, 1, 0)
-    data['sell_signal'] = np.where(data['williamsr'] > -20, -1, 0)
-
-    return data
+def TA(data):
+    df = pd.DataFrame()
+    # indicators we using
+    df['RSI'] = [rsi_strategy(data)]
+    df['RSI_SMA'] = rsi_sma_strategy(data)
+    df['MACD'] = macd_strategy(data)
+    df['MFI'] = mfi_strategy(data)
+    df['TRIX'] = trix_strategy(data)
+    return df
