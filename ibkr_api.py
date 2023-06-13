@@ -144,6 +144,15 @@ def Stock_contract(symbol, secType='STK', exchange='SMART', currency='USD'):
 	contract.currency = currency
 	return contract
 
+def option_contract(symbol, secType="OPT", exchange="SMART",currency="USD"):
+	contract = Contract()
+	contract.symbol = symbol
+	contract.secType = secType
+	contract.exchange = exchange
+	contract.currency = currency
+	return contract
+
+
 def submit_order(contract, direction, qty=100, ordertype='MKT', transmit=True):
 	#Create order object
 	order = Order()
@@ -203,21 +212,21 @@ google_contract = app.get_contract_details(101, google_contract)
 df = app.tick_df(401, google_contract)
 
 #Place order
-app.placeOrder(app.nextorderId, FX_order('EURUSD'), order)
-app.placeOrder(stop_order.orderId, FX_order('EURUSD'), stop_order)
+# app.placeOrder(app.nextorderId, FX_order('EURUSD'), order)
+# app.placeOrder(stop_order.orderId, FX_order('EURUSD'), stop_order)
 #app.nextorderId += 1
 
 time.sleep(3)
 
 #Cancel order 
 print('cancelling order')
-app.cancelOrder(app.nextorderId)
+# app.cancelOrder(app.nextorderId)
 
-apple_contract = Contract()
-apple_contract.symbol = 'AAPL'
-apple_contract.secType = 'STK'
-apple_contract.exchange = 'SMART'
-apple_contract.currency = 'USD'
+# apple_contract = Contract()
+# apple_contract.symbol = 'AAPL'
+# apple_contract.secType = 'STK'
+# apple_contract.exchange = 'SMART'
+# apple_contract.currency = 'USD'
 
 ### Options
 contract = Contract()
@@ -233,24 +242,27 @@ order = Order()
 order.action = 'BUY'
 order.totalQuantity = 1
 order.orderType = 'MKT'
+tsla_contract = option_contract("TSLA")
+tsla_contract = app.get_contract_details(102, tsla_contract)
+print(tsla_contract)
 
-app.placeOrder(app.nextorderId, contract, order)
+# app.placeOrder(app.nextorderId, contract, order)
 
-for i in range(91):
-	print(TickTypeEnum.to_str(i), i) ### We can specify this in reqMktData in the quotations to get the data 
+# for i in range(91):
+# 	print(TickTypeEnum.to_str(i), i) ### We can specify this in reqMktData in the quotations to get the data 
 
-app.reqHistoricalData(1, apple_contract, '', '2 D', '1 hour', 'BID', 0, 2, False, [])
+# app.reqHistoricalData(1, apple_contract, '', '2 D', '1 hour', 'BID', 0, 2, False, [])
 #app.reqMktData(1, apple_contract, '', False, False, [])
 
 
 #Working with Pandas DataFrames
-import pandas
+# import pandas
 
-df = pandas.DataFrame(app.data, columns=['DateTime', 'Close'])
-df['DateTime'] = pandas.to_datetime(df['DateTime'],unit='s') 
-df.to_csv('EURUSD_Hourly.csv')  
+# df = pandas.DataFrame(app.data, columns=['DateTime', 'Close'])
+# df['DateTime'] = pandas.to_datetime(df['DateTime'],unit='s') 
+# df.to_csv('EURUSD_Hourly.csv')  
 
-print(df)
+# print(df)
 
 #time.sleep(10) #Sleep interval to allow time for incoming price data
 app.disconnect()
