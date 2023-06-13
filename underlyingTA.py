@@ -4,6 +4,7 @@ import talib
 import yfinance as yf
 import weights_optimisation
 import sys
+import os 
 
 """
 how to call:
@@ -77,8 +78,14 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        filename = 'Trade-action-logs/'+current_date + '_' + stock_name +'_call-logs.txt'
-        call_file = open(filename, "a")
+        parent_dire = 'Trade-action-logs/'
+        filename = current_date + '_' + stock_name +'_call-logs.txt'
+        fullpath = os.path.join(parent_dire, filename)
+
+        if not os.path.exists(parent_dire):
+            os.mkdir(parent_dire)
+            
+        call_file = open(fullpath, "a+")
         # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
         call_file.write(str(current_data['Datetime']) + '    ' + str(current_data['Close']) + '    ' + str(stoploss) + '    ' + str(takeprofit))
         call_file.close()
@@ -94,8 +101,14 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        filename = 'Trade-action-logs/'+current_date + '_' + stock_name +'_put-logs.txt'
-        put_file = open(filename, "a")
+        parent_dire = 'Trade-action-logs/'
+        filename = current_date + '_' + stock_name +'_put-logs.txt'
+        fullpath = os.path.join(parent_dire, filename)
+
+        if not os.path.exists(parent_dire):
+            os.mkdir(parent_dire)
+
+        put_file = open(fullpath, "a+")
         # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
         put_file.write(str(current_data['Datetime']) + '    ' + str(current_data['Close']) + '    ' + str(stoploss) + '    ' + str(takeprofit))
         put_file.close()
