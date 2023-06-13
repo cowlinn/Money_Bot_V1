@@ -1,7 +1,7 @@
 import pandas as pd
 import ta_lib
 import talib
-import yfinance as yf
+# import yfinance as yf
 
 """
 how to call:
@@ -29,7 +29,6 @@ Some Results:
 # data = stock.history(period = data_period, interval = resolution) # historical price data
 
 def backtest(data, ordered_weights): # ordered_weights is a list of weights in the same order as the output of ta_lib.TA()
-    weights = {}
     Nweights = len(ta_lib.TA(data).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     if len(ordered_weights) != Nweights: # check if the input weights are valid
         print('Incorrect number of weights!')
@@ -45,8 +44,8 @@ def backtest(data, ordered_weights): # ordered_weights is a list of weights in t
     gains = 0
     for i in range(40, len(data)):
         current_data = data.iloc[i]
-        current_hour = int(str(current_data['Datetime']).split()[1][0:2])
-        current_minute = int(str(current_data['Datetime']).split()[1][3:5])
+        # current_hour = int(str(current_data['Datetime']).split()[1][0:2])
+        # current_minute = int(str(current_data['Datetime']).split()[1][3:5])
         current = ta_lib.TA(data.loc[:i])
         output = 0
         for i in range(Nweights):

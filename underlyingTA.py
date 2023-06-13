@@ -58,7 +58,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     optimised_weights = weights_optimisation.optimise(data, interval = 0.1, min_sample_size = min_samples)
     backtest_results = weights_optimisation.backtest(data, optimised_weights)
     if backtest_results[0] < 50:
-        return 0 # do nothing if the current strategy is unlikely to work (has winrate < 50%)
+        return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
     # get current trading signal using the weights
     unweighted_signals = ta_lib.TA(data)
