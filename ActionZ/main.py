@@ -24,19 +24,37 @@ ib = IB() #initialize main instance
 
 #actions we run not as requently
 def once_every_day():
-    run_optimization
+    run_optimization()
+
+
+## start of day: connect bot
+def start_of_day():
+    connection_setup(ib)
+
+    pass
+
+## end of day: disconnect bot 
+## end all trades
+def end_of_day():
+    connection_teardown(ib)
 
 
 #main seq of events
 def main():
-    connection_setup(ib)
+    
     check_prev_positions(ib)
 
+    ##TODO: we dun have subscription yet / not trading hours
     prev_data = req_prev_data(ib)
 
 
+    ##
 
 
+
+
+
+#once every 15 minutes
 main()
 
 

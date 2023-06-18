@@ -66,11 +66,16 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
     fullpath = os.path.join(parent_dir, weights_file_name)
     if not os.path.exists(parent_dir):
         os.mkdir(parent_dir)
-    weights_file = open(fullpath, "w") # "w" because we only want ONE set of weights at a time for a given ticker on a given trading day
-    # assume we want to keep logs of the weights for each day for now, if we dun need can just remove current-date from the filename
-    for i in optimised_weights:
-        weights_file.write(str(i)+'\n')
-    weights_file.close()
+
+    ## colin edit: we only optimize if the file doesn't exist (written one time for the day alr)
+
+    if not os.path.isfile(fullpath):
+        #do the opening and writing?
+        weights_file = open(fullpath, "w") # "w" because we only want ONE set of weights at a time for a given ticker on a given trading day
+        # assume we want to keep logs of the weights for each day for now, if we dun need can just remove current-date from the filename
+        for i in optimised_weights:
+            weights_file.write(str(i)+'\n')
+        weights_file.close()
     
     backtest_results = weights_optimisation.backtest(data, optimised_weights)
     if backtest_results[0] < 50:
@@ -231,15 +236,15 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     print('DONE!!')
     return calls,puts # in case we want to just call this script directly from another python script
 
-if len(sys.argv) != 4:
-    print("Positional arguments:")
-    print("(i) Ticker name")
-    print("(ii) Data lookback period")
-    print("(iii) Resolution of data")
-    sys.exit()
-else:
-    results = optimise_decision(sys.argv[1], sys.argv[2], sys.argv[3])
-    print(results)
-    sys.exit()
+# if len(sys.argv) != 4:
+#     print("Positional arguments:")
+#     print("(i) Ticker name")
+#     print("(ii) Data lookback period")
+#     print("(iii) Resolution of data")
+#     sys.exit()
+# else:
+#     results = optimise_decision(sys.argv[1], sys.argv[2], sys.argv[3])
+#     print(results)
+#     sys.exit()
 
   

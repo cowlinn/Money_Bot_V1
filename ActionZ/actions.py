@@ -4,27 +4,40 @@ from ib_insync import *
 
 #from weights_optimisation import *
 import yfinance as yf
-from underlyingTA import*
+import underlyingTA
+
 
 
 ib = IB() #instance of ibkr 
 
-
+def connection_setup(my_ib):
+    api_thread = threading.Thread(target=actual_connection(my_ib), daemon=True)
+    api_thread.start()
+    my_ib.sleep(1)
+    
 ##take in an instance of ibkr and perform login, assuming instance of IBGateway is running
 ##in the background
-def connection_setup(ib, localhost='127.0.0.1', connection_port=7497):
-    ib.connect(localhost, connection_port, clientId=123)
-    print("CONNECTED")
+def actual_connection(my_ib, localhost='127.0.0.1', connection_port=7497):
+    my_ib.connect()
+    #my_ib.connect(localhost, connection_port, clientId=123)
+    print("IBKR SUCC CONNECTED")
 
-stock = Stock('SPY', 'TSLA') #ticker object to find stonks we are int in
+
+
+def connection_teardown(my_ib):
+    my_ib.disconnect() #disconnects the current ib_sync instance
+    print("HL SAYS BYEBYE")
+#by default, we can req prev data
+spy_monitor = Stock('SPY', 'SMRT', 'USD') #ticker object to find stonks we are int in
 
 
 ##based on the stocks we are currently monitoring, display the result inside a Pandas DF
 
 ##TODO: do we want more combination for this?
+##ok it doesn't work cuz it's not working
 def req_prev_data(ib, duration_str='30 D'):
     bars = ib.reqHistoricalData(
-    stock, endDateTime='', durationStr=duration_str,
+    spy_monitor, endDateTime='', durationStr=duration_str,
     barSizeSetting='1 hour', whatToShow='MIDPOINT', useRTH=True)
 
     # convert to pandas dataframe
@@ -41,6 +54,7 @@ def check_prev_positions(ib):
     print(prev)
     print(open_trades)
 
+
     if not prev:
         return
     
@@ -49,12 +63,11 @@ def check_prev_positions(ib):
         ##DO SOMETHING
         pass
 
-api_thread = threading.Thread(target=connection_setup, daemon=True)
-api_thread.start()
-time.sleep(1)
 
-print(req_prev_data)
+connection_setup(ib)
+print(req_prev_data(ib))
 print(check_prev_positions(ib))
+connection_teardown(ib)
 
 
 
@@ -65,10 +78,12 @@ print(check_prev_positions(ib))
 
 data_period = "4d"
 resolution = "15m"
-def run_optimization(current_stocks = ['SPY', 'AAPL', 'TSLA', 'MSFT', 'AMZN', 'GOOGL', 'NVDA', 'MA', 'V']):
+def run_optimization(current_stocks = ['SPY']):
     for i in current_stocks:
-        optimise_decision(i) # it will just write a bunch of log files
+        print(i + " check")
+        underlyingTA.optimise_decision(i) # it will just write a bunch of log files
 
 
-#run_optimization()
+trades = run_optimization()
 
+print(trades)
