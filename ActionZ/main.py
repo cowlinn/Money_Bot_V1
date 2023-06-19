@@ -1,5 +1,6 @@
 from actions import *
 from weights_optimisation import *
+from ib_insync import * 
 
 ib = IB() #initialize main instance 
 
@@ -8,6 +9,18 @@ ib = IB() #initialize main instance
 
 ##main functions triggers the process of the app 
 ##the behaviour descibed is as follows 
+
+##THIS IS OUR SINGLE SOURCE OF TRUTH 
+##ON WHATEVER STOCKS WE ARE MONITORING
+current_stocks_to_monitor = ['SPY', 'TSLA']
+
+
+
+
+
+
+
+
 
 
 ## Check market open or not
@@ -23,14 +36,16 @@ ib = IB() #initialize main instance
 
 
 #actions we run not as requently
+##optimization basically fetches a bunch of "Weights" 
+##for the day, that we will query based on
 def once_every_day():
-    run_optimization()
+    run_optimization(current_stocks=current_stocks_to_monitor)
+    
 
 
 ## start of day: connect bot
 def start_of_day():
     connection_setup(ib)
-
     pass
 
 ## end of day: disconnect bot 
@@ -41,14 +56,20 @@ def end_of_day():
 
 #main seq of events
 def main():
-    
+
+
+    ##TODO: for the actual options bot, we need to manually check Theta
+    ##ad sell our open options based on theta
     check_prev_positions(ib)
 
-    ##TODO: we dun have subscription yet / not trading hours
+    ##TODO: we dun have subscription yet / not trading hours 
+    ##So we cannot find previous data 
     prev_data = req_prev_data(ib)
 
+    
 
-    ##
+
+    run_trades(ib, current_stocks=current_stocks_to_monitor)
 
 
 

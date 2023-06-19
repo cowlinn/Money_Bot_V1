@@ -1,3 +1,4 @@
+import datetime
 import threading
 import time
 from ib_insync import *
@@ -5,6 +6,8 @@ from ib_insync import *
 #from weights_optimisation import *
 import yfinance as yf
 import underlyingTA
+
+from telegram import send_tele_message
 
 
 
@@ -78,12 +81,106 @@ connection_teardown(ib)
 
 data_period = "4d"
 resolution = "15m"
-def run_optimization(current_stocks = ['SPY']):
+
+## for current stocks, we only have the following 2 to optimise decision from
+def run_optimization(current_stocks = ['SPY', 'TSLA']):
     for i in current_stocks:
-        print(i + " check")
+        print(i + " doing optimize on " + datetime.now())
         underlyingTA.optimise_decision(i) # it will just write a bunch of log files
 
 
-trades = run_optimization()
 
-print(trades)
+
+##returns liquid funds from ib_insyc
+def get_liquid_funds(my_ib):
+    ##get summary from our only account
+    accounts = my_ib.managedAccounts()
+    account = accounts[0]  # Assuming you have only one account
+
+    # Retrieve the account information
+    account_data = my_ib.accountSummary(account=account)
+
+    ##loop through and get the account data 
+
+    liquid_funds = next((item for item in account_data if item.tag == 'AvailableFunds'), None)
+
+    return liquid_funds.value
+
+
+def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
+    for ticker_name in current_stocks:
+        print(f"checking to see if there are good trades for {ticker_name}")
+        decision = underlyingTA.decision(ticker_name) # it will just write a bunch of log files
+
+
+        ##TODO: check if we are alr holding a stock in current_stocks, if we are then fk it 
+
+        ##LOGIC TO EXECUTE TRADE
+        #this "trade" key is a datetime obj
+        for trade in decision:
+            ##check funds 
+            current_funds = get_liquid_funds(my_ib)
+
+            # grab the variables 
+            purchase_price, stoploss, take_profit = decision[trade]
+
+            if current_funds > purchase_price:
+                #make the actual trade using the stoploss and tp
+                
+                #step 1: create the contract
+                contract = create_contract(ticker_name=ticker_name)
+
+
+                #step 2: create the order 
+                #TODO: check if buy or sell?
+                bracket_order = create_order(purchase_price, stoploss, take_profit)
+
+                #make the trade
+                trade = ib.placeOrder(contract, bracket_order)
+                ib.sleep(1)  # Sleep for a moment to allow trade executio
+                # Check the order status
+                order_status = ib.trades()[trade].orderStatus
+
+
+                ##HERE: send a tele message xd 
+                print("Order status:", order_status.status)
+                send_tele_message("Order status:", order_status.status)
+
+def create_contract(ticker_name):
+    contract = Contract()
+    contract.symbol = ticker_name  # Symbol of the stock
+    contract.secType = 'STK'  # Security type: 'STK' for stock
+    contract.exchange = 'SMART'  # Exchange: 'SMART' for SmartRouting
+    contract.currency = 'USD'  # Currency
+    return contract
+
+
+
+##TODO: check how to create order to buy (or short sell?)
+def create_order(purchase_price, stoploss, take_profit, order_size=30, action='BUY'):
+    # Define the parent order
+    parent_order = Order(
+        action=action,  # 'BUY' or 'SELL'
+        totalQuantity=order_size,  # Total quantity of the asset
+        orderType='LMT',  # Order type: 'LMT' for limit order
+        lmtPrice=purchase_price  # Limit price
+    )
+
+    # Define the stop-loss order
+    stop_loss_order = Order(
+        action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
+        totalQuantity=100,
+        orderType='STP',  # Order type: 'STP' for stop order
+        auxPrice=stoploss  # Stop price
+    )
+
+    # Define the take-profit order
+    take_profit_order = Order(
+        action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
+        totalQuantity=100,
+        orderType='LMT',  # Order type: 'LMT' for limit order
+        lmtPrice=take_profit # Limit price
+    )
+
+    bracket_order = BracketOrder(parent=parent_order, stopLoss=stop_loss_order, takeProfit=take_profit_order)
+    return bracket_order
