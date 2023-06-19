@@ -57,8 +57,8 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
     
     # get optimised weights by backtesting through the data_period. Weights have precision of 0.1
     # changed the precision to 0.01 (it takes about 3 min and 20s to run as compared to 20s for 0.1)
-    # at 15m resolution the 3min is not THAT bad
-    optimised_weights = weights_optimisation.optimise(data, interval = 0.01, min_sample_size = min_samples)
+    # at 15m resolution the 3min is not THAT bad considering we only run this like once or twice a day?
+    optimised_weights = weights_optimisation.optimise(data, interval = 0.01, min_sample_size = min_samples, stock_name = stock_name)
    
     # write optimised weigths to a file
     parent_dir = 'Optimised-weights/'
@@ -72,12 +72,12 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
         weights_file.write(str(i)+'\n')
     weights_file.close()
     
-    backtest_results = weights_optimisation.backtest(data, optimised_weights)
+    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name)
     if backtest_results[0] < 50:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
     # get current trading signal using the weights
-    unweighted_signals = ta_lib.TA(data)
+    unweighted_signals = ta_lib.TA(data, weights_optimisation.forex(stock_name))
     Nweights = len(unweighted_signals.iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     overall_signal = 0
     for i in range(Nweights):
@@ -167,12 +167,12 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         print('Previous optimisation unsuccessful, retrying optimsation!')
         return optimise_decision(stock_name, data_period, resolution) # run the optimsation again and return the (potentially) new result instead. Also, rewrite the weights file if it is different
     
-    backtest_results = weights_optimisation.backtest(data, optimised_weights)
+    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name)
     if backtest_results[0] < 50:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
     # get current trading signal using the weights
-    unweighted_signals = ta_lib.TA(data)
+    unweighted_signals = ta_lib.TA(data, weights_optimisation.forex(stock_name))
     Nweights = len(unweighted_signals.iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     overall_signal = 0
     for i in range(Nweights):
