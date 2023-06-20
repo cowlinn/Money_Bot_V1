@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import threading
 import time
 from ib_insync import *
@@ -38,8 +38,8 @@ spy_monitor = Stock('SPY', 'SMRT', 'USD') #ticker object to find stonks we are i
 
 ##TODO: do we want more combination for this?
 ##ok it doesn't work cuz it's not working
-def req_prev_data(ib, duration_str='30 D'):
-    bars = ib.reqHistoricalData(
+def req_prev_data(my_ib, duration_str='30 D'):
+    bars = my_ib.reqHistoricalData(
     spy_monitor, endDateTime='', durationStr=duration_str,
     barSizeSetting='1 hour', whatToShow='MIDPOINT', useRTH=True)
 
@@ -48,20 +48,29 @@ def req_prev_data(ib, duration_str='30 D'):
     return df
 
 
-
+#turns list into nice helper list
+def helper_list_print(message, lst):
+    res = message + '\n'
+    for i in range(len(lst)):
+        res += (f"{i}: {lst[i]}" + '/n')
+    send_tele_message(res)
 ##TODO: check what the format of this looks like, and sell stuff that we should
-def check_prev_positions(ib):
-    prev = ib.positions() #a list of positions we are holdin
-    open_trades = ib.openTrades() #this shld be all closed?
-
-    print(prev)
-    print(open_trades)
 
 
-    if not prev:
-        return
+def check_prev_positions(my_ib):
+    prev_positions = my_ib.positions() #a list of positions we are holdin
+    open_trades = my_ib.openTrades() #this shld be all closed?
+
+    helper_list_print("Here's a list of our prev_positions: ", prev_positions)
+    helper_list_print("Here's a list of our open_trades: ", open_trades)
+
+    funds = get_liquid_funds(my_ib)
+    send_tele_message(f"By the way, you have $USD {funds} left")
+
+    for pos in prev_positions:
+        pass
     
-    for pos in prev:
+    for pos in open_trades:
 
         ##DO SOMETHING
         pass
@@ -81,8 +90,8 @@ resolution = "15m"
 ## for current stocks, we only have the following 2 to optimise decision from
 def run_optimization(current_stocks = ['SPY', 'TSLA']):
     for i in current_stocks:
-        print(i + " doing optimize on " + datetime.now())
-        underlyingTA.optimise_decision(i) # it will just write a bunch of log files
+        print(i + " doing optimize on " + str(datetime.now()))
+        underlyingTA.optimise_decision(stock_name=i) # it will just write a bunch of log files
 
 
 
@@ -99,15 +108,9 @@ def get_liquid_funds(my_ib):
     ##loop through and get the account data 
 
     liquid_funds = next((item for item in account_data if item.tag == 'AvailableFunds'), None)
-
     return liquid_funds.value
 
 
-connection_setup(ib)
-#print(req_prev_data(ib))
-print(check_prev_positions(ib))
-print(get_liquid_funds(ib))
-connection_teardown(ib)
 
 def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
     for ticker_name in current_stocks:
@@ -120,9 +123,13 @@ def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
         ##LOGIC TO EXECUTE TRADE
         #this "trade" key is a datetime obj
         for trade in decision:
+            if not trade:
+                return
             ##check funds 
             current_funds = get_liquid_funds(my_ib)
 
+            print("printing trades")
+            print(trade)
             # grab the variables 
             purchase_price, stoploss, take_profit = decision[trade]
 

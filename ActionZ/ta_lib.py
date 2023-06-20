@@ -214,12 +214,23 @@ def trix_strategy(data):
     else:
         return 0
 
-def TA(data):
-    df = pd.DataFrame()
-    # indicators we using
-    df['RSI'] = [rsi_strategy(data)]
-    df['RSI_SMA'] = rsi_sma_strategy(data)
-    df['MACD'] = macd_strategy(data)
-    df['MFI'] = mfi_strategy(data)
-    df['TRIX'] = trix_strategy(data)
-    return df
+def TA(data, forex = False):
+    if not forex:
+        df = pd.DataFrame()
+        # indicators we using
+        df['RSI'] = [rsi_strategy(data)]
+        df['RSI_SMA'] = rsi_sma_strategy(data)
+        df['MACD'] = macd_strategy(data)
+        df['MFI'] = mfi_strategy(data)
+        df['TRIX'] = trix_strategy(data)
+        return df
+    else:
+        # do not use volume data for forex (yfinance gives all 0 for volume of forex pairs)
+        df = pd.DataFrame()
+        # indicators we using
+        df['RSI'] = [rsi_strategy(data)]
+        df['RSI_SMA'] = rsi_sma_strategy(data)
+        df['MACD'] = macd_strategy(data)
+        # df['MFI'] = mfi_strategy(data)
+        df['TRIX'] = trix_strategy(data)
+        return df

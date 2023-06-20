@@ -2,6 +2,8 @@ from actions import *
 from weights_optimisation import *
 from ib_insync import * 
 
+
+
 ib = IB() #initialize main instance 
 
 ##TODO: check if we need to regenerate any persistent data here?
@@ -12,7 +14,7 @@ ib = IB() #initialize main instance
 
 ##THIS IS OUR SINGLE SOURCE OF TRUTH 
 ##ON WHATEVER STOCKS WE ARE MONITORING
-current_stocks_to_monitor = ['SPY', 'TSLA']
+current_stocks_to_monitor = ['SPY', 'EURUSD=X']
 
 
 
@@ -39,7 +41,9 @@ current_stocks_to_monitor = ['SPY', 'TSLA']
 ##optimization basically fetches a bunch of "Weights" 
 ##for the day, that we will query based on
 def once_every_day():
-    run_optimization(current_stocks=current_stocks_to_monitor)
+    #check_prev_positions(ib)
+    #run_optimization(current_stocks=current_stocks_to_monitor)
+    pass
     
 
 
@@ -55,7 +59,7 @@ def end_of_day():
 
 
 #main seq of events
-def main(ib):
+def main():
 
 
     ##TODO: for the actual options bot, we need to manually check Theta
@@ -75,10 +79,12 @@ def main(ib):
 
 ###start of day ##
 
-start_of_day(ib)
+start_of_day()
 
 #once every 15 minutes
-main(ib)
+main()
 
 
+###end of day 
 
+end_of_day()

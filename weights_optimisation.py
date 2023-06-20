@@ -225,4 +225,4 @@ def interpret(optimised_output, data, stock_name):
         ordered_weights.append(dic[i])
     return ordered_weights
 
-optimise(data=data, interval=0.1, min_sample_size=5)
+#optimise(data=data, interval=0.1, min_sample_size=5)
