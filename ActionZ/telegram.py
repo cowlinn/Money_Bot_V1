@@ -47,7 +47,7 @@ apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey
 def send_tele_message(message):
     TOKEN = auth["TOKEN"]
     chat_id = auth["chat_id"]
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}&disable_notification=true"
     requests.get(url).json()
 
 
