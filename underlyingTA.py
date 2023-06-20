@@ -54,11 +54,13 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
     current_data = data.iloc[-1] 
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     min_samples = int(data_period[:-1]) # average of 1 trade per day?
-    
+    optimisation_interval = 0.01
+    if weights_optimisation.forex(stock_name):
+        optimisation_interval = 0.05
     # get optimised weights by backtesting through the data_period. Weights have precision of 0.1
     # changed the precision to 0.01 (it takes about 3 min and 20s to run as compared to 20s for 0.1)
     # at 15m resolution the 3min is not THAT bad considering we only run this like once or twice a day?
-    optimised_weights = weights_optimisation.optimise(data, interval = 0.01, min_sample_size = min_samples, stock_name = stock_name)
+    optimised_weights = weights_optimisation.optimise(data, interval = optimisation_interval, min_sample_size = min_samples, stock_name = stock_name)
    
     # write optimised weigths to a file
     parent_dir = 'Optimised-weights/'
@@ -140,7 +142,10 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
 def decision(stock_name, data_period = '4d', resolution = '15m'):
     calls = {}
     puts = {}
-
+    if weights_optimisation.forex(stock_name):
+        print('Currently performing TA for forex pair '+ stock_name[:-2]+'.')
+    else:
+        print('Currently performing TA for '+ stock_name+'.')
     # call the data
     stock = yf.Ticker(stock_name)  # this goes in main()
     data = stock.history(period = data_period, interval = resolution) # historical price data
@@ -153,7 +158,8 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     parent_dir = 'Optimised-weights/'
     weights_file_name = current_date + '_' + stock_name +'_optimised-weights.txt'
     fullpath = os.path.join(parent_dir, weights_file_name)
-    if not os.path.exists(fullpath): # if u accidentally call this as the first decision of the day
+    if not os.path.exists(fullpath): # if u call this as the first decision of the day
+        print('Performing first optimisation of the day.')
         return optimise_decision(stock_name, data_period, resolution)
     weights_file = open(fullpath, "r")
     optimised_weights = []
@@ -231,15 +237,15 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     print('DONE!!')
     return calls,puts # in case we want to just call this script directly from another python script
 
-if len(sys.argv) != 4:
-    print("Positional arguments:")
-    print("(i) Ticker name")
-    print("(ii) Data lookback period")
-    print("(iii) Resolution of data")
-    sys.exit()
-else:
-    results = optimise_decision(sys.argv[1], sys.argv[2], sys.argv[3])
-    print(results)
-    sys.exit()
+# if len(sys.argv) != 4:
+#     print("Positional arguments:")
+#     print("(i) Ticker name")
+#     print("(ii) Data lookback period")
+#     print("(iii) Resolution of data")
+#     sys.exit()
+# else:
+#     results = optimise_decision(sys.argv[1], sys.argv[2], sys.argv[3])
+#     print(results)
+#     sys.exit()
 
   
