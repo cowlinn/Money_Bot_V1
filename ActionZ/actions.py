@@ -67,10 +67,6 @@ def check_prev_positions(ib):
         pass
 
 
-connection_setup(ib)
-print(req_prev_data(ib))
-print(check_prev_positions(ib))
-connection_teardown(ib)
 
 
 
@@ -106,6 +102,12 @@ def get_liquid_funds(my_ib):
 
     return liquid_funds.value
 
+
+connection_setup(ib)
+#print(req_prev_data(ib))
+print(check_prev_positions(ib))
+print(get_liquid_funds(ib))
+connection_teardown(ib)
 
 def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
     for ticker_name in current_stocks:

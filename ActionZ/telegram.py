@@ -3,7 +3,7 @@ import datetime
 from datetime import datetime as dt
 from pytz import timezone
 import time
-import alpaca_trade_api as alpaca
+#import alpaca_trade_api as alpaca
 import json
 import smtplib
 from datetime import timedelta
@@ -14,7 +14,7 @@ import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 
-auth = json.loads(open('Auth/col_auth.txt', 'r').read())
+auth = json.loads(open('Auth/grp_auth.txt', 'r').read())
 
 # class IBapi(EWrapper, EClient):
 #      def __init__(self):
@@ -305,5 +305,4 @@ def wma(ticker,key):
     return df
 
 
-send_tele_message("hello_world")
 

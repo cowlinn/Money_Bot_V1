@@ -46,7 +46,7 @@ def once_every_day():
 ## start of day: connect bot
 def start_of_day():
     connection_setup(ib)
-    pass
+    once_every_day()
 
 ## end of day: disconnect bot 
 ## end all trades
@@ -55,7 +55,7 @@ def end_of_day():
 
 
 #main seq of events
-def main():
+def main(ib):
 
 
     ##TODO: for the actual options bot, we need to manually check Theta
@@ -73,10 +73,12 @@ def main():
 
 
 
+###start of day ##
 
+start_of_day(ib)
 
 #once every 15 minutes
-main()
+main(ib)
 
 
 
