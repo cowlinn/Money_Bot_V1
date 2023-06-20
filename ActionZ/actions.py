@@ -124,7 +124,8 @@ def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
         #this "trade" key is a datetime obj
         for trade in decision:
             if not trade:
-                return
+                send_tele_message(f"no trades for {ticker_name}")
+                break
             ##check funds 
             current_funds = get_liquid_funds(my_ib)
 
