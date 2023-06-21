@@ -253,7 +253,7 @@ def weights_file_name(stock_name):
     yesterday_date = str(datetime.date.today() - datetime.timedelta(days=1))
     current_date = str(datetime.date.today())
     if not trading_hours():
-        current_date = yesterday_date # no new market data yet if not during trading hours
+        current_date = yesterday_date # no new market data yet if not during trading hours so the latest file would have yesterday's date
     weights_filename = 'Optimised-weights/'+current_date + '_' + stock_name +'_optimised-weights.txt'
     return weights_filename
 
@@ -272,27 +272,40 @@ def bad_optimise(stock_name): # detects if optimisation was bad
     else:
         return False
 
+# this is meant to be run outside of trading hours to prepare weights that will be read during trading hours
+# and to give a list of tickers we actually want to use
 def cleanup(stock_list): # ONLY FOR TESTING PURPOSES! in actaul implementation the decision() function will just retry the optimisation
     good_stock_list = []
+    # assuming optimsation was ran before trading hours, on a trading day, and it is STILL before trading hours        
+    # OR the optimisation was ran DURING trading hours, and it is STILL trading hours
     for i in stock_list:
         if not os.path.exists(weights_file_name(i)):
             print('Weights file for '+ i +' does not exist!')
             continue
+        
+        # remove the badly optimised weights file
         if bad_optimise(i):
-            # remove the badly optimised weights file
             print('Removed '+i)
-            continue # comment this off
             os.remove(weights_file_name(i))
         else:
-            # add to list of good stocks for trading
-            good_stock_list.append(i)
+            if not trading_hours(): # prepare the weight files to be read the when trading opens
+                current_date = str(datetime.date.today())
+                new_filename = 'Optimised-weights/'+current_date + '_' + i +'_optimised-weights.txt'
+                os.rename(weights_file_name(i), new_filename) # prepare the weight files to be read the when trading opens if it is currently before trading hours
+            good_stock_list.append(i)  # add to list of good stocks for trading
     return good_stock_list
+
 """
 example usage for the new cleanup() and function to pre-optimise our data
 stock_list = ["SPY", "TSLA", "NVDA", "V", "MA", "AMD", "PYPL", "GME", "PLTR", "MSFT", "GOOGL", "AAPL", "MU", "JPM", "DIS", "NFLX", "MMM", "CAT", "NKE", "WMT", "COST", "CSCO", "PFE", "SSL", "RIOT", "GILD", "AMZN", "BABA"]
 for i in stock_list:
     print(decision(i))
 stock_list = cleanup(stock_list)
+
+# can use the cleaned stocklist now
+for i in stock_list:
+    print(decision(i)) # should be fast af
+    
 """
 
 
