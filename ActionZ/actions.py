@@ -11,17 +11,16 @@ from telegram import send_tele_message
 
 
 
-ib = IB() #instance of ibkr 
+
 
 def connection_setup(my_ib):
-    api_thread = threading.Thread(target=actual_connection(my_ib), daemon=True)
-    api_thread.start()
+    actual_connection(my_ib)
     my_ib.sleep(1)
     
 ##take in an instance of ibkr and perform login, assuming instance of IBGateway is running
 ##in the background
 def actual_connection(my_ib, localhost='127.0.0.1', connection_port=7497):
-    my_ib.connect()
+    my_ib.connect(host=localhost, port=connection_port, clientId=125)
     #my_ib.connect(localhost, connection_port, clientId=123)
     print("IBKR SUCC CONNECTED")
 
@@ -111,6 +110,39 @@ def get_liquid_funds(my_ib):
     return float(liquid_funds.value)
 
 
+def make_trade(trade_dict, action, ticker, my_ib):
+    if not trade_dict:
+        return 
+    for date in trade_dict:
+        purchase_price, stoploss, take_profit = trade_dict[date]
+        current_funds = get_liquid_funds(my_ib)
+
+        if current_funds > purchase_price:
+            #make the trade?
+            #step 1: create the contract
+            contract = create_contract(ticker_name=ticker)
+
+
+            #step 2: create the order 
+            #TODO: check if buy or sell?
+            bracket_order = create_order(purchase_price, stoploss, take_profit, action)
+
+            #make the trade
+            for o in bracket_order:
+                my_ib.placeOrder(contract, o)
+
+            #trade = ib.placeOrder(contract, bracket_order)
+            my_ib.sleep(1)  # Sleep for a moment to allow trade executio
+            # Check the order status of the most recent one?
+            order_status = my_ib.trades()[-1].orderStatus 
+
+
+            ##HERE: send a tele message xd 
+            print(f"Order status: {order_status.status} for {ticker} with action {action}")
+            send_tele_message(f"Order status: {order_status.status} for {ticker} with action {action}")
+
+
+
 
 def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
     for ticker_name in current_stocks:
@@ -122,44 +154,11 @@ def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
 
         ##LOGIC TO EXECUTE TRADE
         #this "trade" key is a datetime obj
-        for trade in decision:
+        call_dict, put_dict = decision
 
-            if not trade:
-                send_tele_message(f"no trades for {ticker_name}")
-                break
+        make_trade(call_dict, 'BUY', ticker_name, my_ib)
+        make_trade(put_dict, 'SELL', ticker_name, my_ib)
 
-
-            print("printing trades")
-            for date in trade:
-                purchase_price, stoploss, take_profit = trade[date]
-                 ##check funds 
-                current_funds = get_liquid_funds(my_ib)
-                print(f"purchase_price={purchase_price}, stoploss = {stoploss}, take_proft = {take_profit}")
-                print(f"current_funds = {current_funds}")
-                if current_funds > purchase_price:
-                    #make the actual trade using the stoploss and tp
-                    
-                    #step 1: create the contract
-                    contract = create_contract(ticker_name=ticker_name)
-
-
-                    #step 2: create the order 
-                    #TODO: check if buy or sell?
-                    bracket_order = create_order(purchase_price, stoploss, take_profit)
-
-                    #make the trade
-                    for o in bracket_order:
-                        ib.placeOrder(contract, o)
-                        
-                    #trade = ib.placeOrder(contract, bracket_order)
-                    ib.sleep(1)  # Sleep for a moment to allow trade executio
-                    # Check the order status
-                    order_status = ib.trades()[trade].orderStatus
-
-
-                    ##HERE: send a tele message xd 
-                    print("Order status:", order_status.status)
-                    send_tele_message("Order status:", order_status.status)
 
 def create_contract(ticker_name):
     contract = Contract()
@@ -172,12 +171,12 @@ def create_contract(ticker_name):
 
 
 ##TODO: check how to create order to buy (or short sell?)
-def create_order(purchase_price, stoploss, take_profit, order_size=30, action='BUY'):
+def create_order(purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
     # Define the parent order
     parent_order = Order(
         action=action,  # 'BUY' or 'SELL'
         totalQuantity=order_size,  # Total quantity of the asset
-        orderType='LMT',  # Order type: 'LMT' for limit order
+        orderType='MKT',  # Order type: 'LMT' for limit order
         lmtPrice=purchase_price  # Limit price
     )
 
