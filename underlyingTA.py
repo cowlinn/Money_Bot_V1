@@ -54,11 +54,13 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
     current_data = data.iloc[-1] 
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     min_samples = int(data_period[:-1]) # average of 1 trade per day?
-    
+    optimisation_interval = 0.01
+    if weights_optimisation.forex(stock_name):
+        optimisation_interval = 0.05
     # get optimised weights by backtesting through the data_period. Weights have precision of 0.1
     # changed the precision to 0.01 (it takes about 3 min and 20s to run as compared to 20s for 0.1)
-    # at 15m resolution the 3min is not THAT bad
-    optimised_weights = weights_optimisation.optimise(data, interval = 0.01, min_sample_size = min_samples)
+    # at 15m resolution the 3min is not THAT bad considering we only run this like once or twice a day?
+    optimised_weights = weights_optimisation.optimise(data, interval = optimisation_interval, min_sample_size = min_samples, stock_name = stock_name)
    
     # write optimised weigths to a file
     parent_dir = 'Optimised-weights/'
@@ -72,19 +74,19 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
         weights_file.write(str(i)+'\n')
     weights_file.close()
     
-    backtest_results = weights_optimisation.backtest(data, optimised_weights)
+    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name)
     if backtest_results[0] < 50:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
     # get current trading signal using the weights
-    unweighted_signals = ta_lib.TA(data)
+    unweighted_signals = ta_lib.TA(data, weights_optimisation.forex(stock_name))
     Nweights = len(unweighted_signals.iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     overall_signal = 0
     for i in range(Nweights):
         overall_signal += optimised_weights[i]*unweighted_signals.iloc[0][i] # apply the weights
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
-    if overall_signal > 0.4:
+    if overall_signal >= 0.4:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*2
@@ -108,7 +110,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
-    elif overall_signal < -0.4:
+    elif overall_signal <= -0.4:
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*2
         takeprofit = current_data['Close']-current_data['ATR']*2.5
@@ -140,7 +142,10 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
 def decision(stock_name, data_period = '4d', resolution = '15m'):
     calls = {}
     puts = {}
-
+    if weights_optimisation.forex(stock_name):
+        print('Currently performing TA for forex pair '+ stock_name[:-2]+'.')
+    else:
+        print('Currently performing TA for '+ stock_name+'.')
     # call the data
     stock = yf.Ticker(stock_name)  # this goes in main()
     data = stock.history(period = data_period, interval = resolution) # historical price data
@@ -153,7 +158,8 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     parent_dir = 'Optimised-weights/'
     weights_file_name = current_date + '_' + stock_name +'_optimised-weights.txt'
     fullpath = os.path.join(parent_dir, weights_file_name)
-    if not os.path.exists(fullpath): # if u accidentally call this as the first decision of the day
+    if not os.path.exists(fullpath): # if u call this as the first decision of the day
+        print('Performing first optimisation of the day.')
         return optimise_decision(stock_name, data_period, resolution)
     weights_file = open(fullpath, "r")
     optimised_weights = []
@@ -167,19 +173,19 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         print('Previous optimisation unsuccessful, retrying optimsation!')
         return optimise_decision(stock_name, data_period, resolution) # run the optimsation again and return the (potentially) new result instead. Also, rewrite the weights file if it is different
     
-    backtest_results = weights_optimisation.backtest(data, optimised_weights)
+    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name)
     if backtest_results[0] < 50:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
     # get current trading signal using the weights
-    unweighted_signals = ta_lib.TA(data)
+    unweighted_signals = ta_lib.TA(data, weights_optimisation.forex(stock_name))
     Nweights = len(unweighted_signals.iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     overall_signal = 0
     for i in range(Nweights):
         overall_signal += optimised_weights[i]*unweighted_signals.iloc[0][i] # apply the weights
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
-    if overall_signal > 0.4:
+    if overall_signal >= 0.4:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*2
@@ -203,7 +209,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
-    elif overall_signal < -0.4:
+    elif overall_signal <= -0.4:
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*2
         takeprofit = current_data['Close']-current_data['ATR']*2.5
@@ -231,15 +237,13 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     print('DONE!!')
     return calls,puts # in case we want to just call this script directly from another python script
 
-if len(sys.argv) != 4:
-    print("Positional arguments:")
-    print("(i) Ticker name")
-    print("(ii) Data lookback period")
-    print("(iii) Resolution of data")
-    sys.exit()
-else:
-    results = optimise_decision(sys.argv[1], sys.argv[2], sys.argv[3])
-    print(results)
-    sys.exit()
-
-  
+# if len(sys.argv) != 4:
+#     print("Positional arguments:")
+#     print("(i) Ticker name")
+#     print("(ii) Data lookback period")
+#     print("(iii) Resolution of data")
+#     sys.exit()
+# else:
+#     results = optimise_decision(sys.argv[1], sys.argv[2], sys.argv[3])
+#     print(results)
+#     sys.exit()
