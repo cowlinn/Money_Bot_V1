@@ -51,46 +51,46 @@ def once_every_day():
 
 
 ## start of day: connect bot
-def start_of_day():
-    connection_setup(ib)
+def start_of_day(my_ib):
+    connection_setup(my_ib)
     once_every_day()
 
 ## end of day: disconnect bot 
 ## end all trades
-def end_of_day():
-    connection_teardown(ib)
+def end_of_day(my_ib):
+    connection_teardown(my_ib)
 
 
 #main seq of events
-def main():
+def main(my_ib):
 
 
     ##TODO: for the actual options bot, we need to manually check Theta
     ##ad sell our open options based on theta
-    check_prev_positions(ib)
+    check_prev_positions(my_ib)
 
     ##TODO: we dun have subscription yet / not trading hours 
     ##So we cannot find previous data 
-    prev_data = req_prev_data(ib)
+    prev_data = req_prev_data(my_ib)
 
     
 
 
-    run_trades(ib, current_stocks=current_stocks_to_monitor)
+    run_trades(my_ib, current_stocks=current_stocks_to_monitor)
 
 
 
 ###start of day ##
 
-start_of_day()
+start_of_day(ib)
 
 #once every 15 minutes
 counter = 0
 while counter <= 50:
-    main()
+    main(ib)
     time.sleep(300)
     counter +=1 
 
 ###end of day 
 
-end_of_day()
+end_of_day(ib)
