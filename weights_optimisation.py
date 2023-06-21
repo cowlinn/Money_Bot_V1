@@ -65,13 +65,13 @@ def backtest(data, ordered_weights, stock_name): # ordered_weights is a list of 
         #     # print(current_data['Datetime'])
         #     continue
         # opening positions
-        if output > 0.4:
+        if output >= 0.4:
             # print ('Buy a call at '+str(current_data['Datetime']))
             stoploss = current_data['Close']-current_data['ATR']*2
             takeprofit = current_data['Close']+current_data['ATR']*2.5
             calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
-        elif output < -0.4:
+        elif output <= -0.4:
             # print('Buy a put at '+str(current_data['Datetime']))
             stoploss = current_data['Close']+current_data['ATR']*2
             takeprofit = current_data['Close']-current_data['ATR']*2.5

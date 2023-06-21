@@ -86,7 +86,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
         overall_signal += optimised_weights[i]*unweighted_signals.iloc[0][i] # apply the weights
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
-    if overall_signal > 0.4:
+    if overall_signal >= 0.4:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*2
@@ -110,7 +110,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
-    elif overall_signal < -0.4:
+    elif overall_signal <= -0.4:
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*2
         takeprofit = current_data['Close']-current_data['ATR']*2.5
@@ -185,7 +185,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         overall_signal += optimised_weights[i]*unweighted_signals.iloc[0][i] # apply the weights
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
-    if overall_signal > 0.4:
+    if overall_signal >= 0.4:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*2
@@ -209,7 +209,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
-    elif overall_signal < -0.4:
+    elif overall_signal <= -0.4:
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*2
         takeprofit = current_data['Close']-current_data['ATR']*2.5
