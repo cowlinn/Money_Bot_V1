@@ -172,7 +172,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     baasly = 0
     if sum(optimised_weights) == baasly: # if the previous optimisation was baasly (no samples with good success rate)
         print('Previous optimisation unsuccessful, retrying optimsation!')
-        return optimise_decision(stock_name, data_period, resolution) # run the optimsation again and return the (potentially) new result instead. Also, rewrite the weights file if it is different
+        return optimise_decision(stock_name, data_period, resolution, first = False) # run the optimsation again and return the (potentially) new result instead. Also, rewrite the weights file if it is different
     
     backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name)
     if backtest_results[0] < 50:
