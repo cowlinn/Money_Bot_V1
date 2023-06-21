@@ -108,7 +108,7 @@ def get_liquid_funds(my_ib):
     ##loop through and get the account data 
 
     liquid_funds = next((item for item in account_data if item.tag == 'AvailableFunds'), None)
-    return liquid_funds.value
+    return float(liquid_funds.value)
 
 
 
@@ -123,38 +123,43 @@ def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
         ##LOGIC TO EXECUTE TRADE
         #this "trade" key is a datetime obj
         for trade in decision:
+
             if not trade:
                 send_tele_message(f"no trades for {ticker_name}")
                 break
-            ##check funds 
-            current_funds = get_liquid_funds(my_ib)
+
 
             print("printing trades")
-            print(trade)
-            # grab the variables 
-            purchase_price, stoploss, take_profit = decision[trade]
-
-            if current_funds > purchase_price:
-                #make the actual trade using the stoploss and tp
-                
-                #step 1: create the contract
-                contract = create_contract(ticker_name=ticker_name)
-
-
-                #step 2: create the order 
-                #TODO: check if buy or sell?
-                bracket_order = create_order(purchase_price, stoploss, take_profit)
-
-                #make the trade
-                trade = ib.placeOrder(contract, bracket_order)
-                ib.sleep(1)  # Sleep for a moment to allow trade executio
-                # Check the order status
-                order_status = ib.trades()[trade].orderStatus
+            for date in trade:
+                purchase_price, stoploss, take_profit = trade[date]
+                 ##check funds 
+                current_funds = get_liquid_funds(my_ib)
+                print(f"purchase_price={purchase_price}, stoploss = {stoploss}, take_proft = {take_profit}")
+                print(f"current_funds = {current_funds}")
+                if current_funds > purchase_price:
+                    #make the actual trade using the stoploss and tp
+                    
+                    #step 1: create the contract
+                    contract = create_contract(ticker_name=ticker_name)
 
 
-                ##HERE: send a tele message xd 
-                print("Order status:", order_status.status)
-                send_tele_message("Order status:", order_status.status)
+                    #step 2: create the order 
+                    #TODO: check if buy or sell?
+                    bracket_order = create_order(purchase_price, stoploss, take_profit)
+
+                    #make the trade
+                    for o in bracket_order:
+                        ib.placeOrder(contract, o)
+                        
+                    #trade = ib.placeOrder(contract, bracket_order)
+                    ib.sleep(1)  # Sleep for a moment to allow trade executio
+                    # Check the order status
+                    order_status = ib.trades()[trade].orderStatus
+
+
+                    ##HERE: send a tele message xd 
+                    print("Order status:", order_status.status)
+                    send_tele_message("Order status:", order_status.status)
 
 def create_contract(ticker_name):
     contract = Contract()
@@ -179,7 +184,7 @@ def create_order(purchase_price, stoploss, take_profit, order_size=30, action='B
     # Define the stop-loss order
     stop_loss_order = Order(
         action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
-        totalQuantity=100,
+        totalQuantity=order_size,
         orderType='STP',  # Order type: 'STP' for stop order
         auxPrice=stoploss  # Stop price
     )
@@ -187,7 +192,7 @@ def create_order(purchase_price, stoploss, take_profit, order_size=30, action='B
     # Define the take-profit order
     take_profit_order = Order(
         action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
-        totalQuantity=100,
+        totalQuantity=order_size,
         orderType='LMT',  # Order type: 'LMT' for limit order
         lmtPrice=take_profit # Limit price
     )

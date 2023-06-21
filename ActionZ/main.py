@@ -14,7 +14,10 @@ ib = IB() #initialize main instance
 
 ##THIS IS OUR SINGLE SOURCE OF TRUTH 
 ##ON WHATEVER STOCKS WE ARE MONITORING
-current_stocks_to_monitor = ['SPY', 'EURUSD=X']
+
+current_stocks_to_monitor = stock_list = ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', 'GME', 'PLTR', 
+                                          'MSFT', 'GOOGL', 'JPM', 'DIS', 'NFLX', 'MMM', 'CAT', 'NKE', 'WMT',
+                                            'COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA']
 
 
 
@@ -82,8 +85,11 @@ def main():
 start_of_day()
 
 #once every 15 minutes
-main()
-
+counter = 0
+while counter <= 50:
+    main()
+    time.sleep(300)
+    counter +=1 
 
 ###end of day 
 
