@@ -43,7 +43,7 @@ how to call:
         Should probably split it into multiple loops.
 """
 # make a trading decision based on current available market information
-def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
+def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first = True):
     calls = {}
     puts = {}
 
@@ -56,7 +56,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m'):
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     min_samples = int(data_period[:-1]) # average of 1 trade per day?
     optimisation_interval = 0.01
-    if weights_optimisation.forex(stock_name):
+    if weights_optimisation.forex(stock_name) or not first:
         optimisation_interval = 0.05
     # get optimised weights by backtesting through the data_period. Weights have precision of 0.1
     # changed the precision to 0.01 (it takes about 3 min and 20s to run as compared to 20s for 0.1)
