@@ -15,6 +15,7 @@ from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 
 auth = json.loads(open('Auth/grp_auth.txt', 'r').read())
+# current money_bot trades chat id is -1001987988217
 
 # class IBapi(EWrapper, EClient):
 #      def __init__(self):

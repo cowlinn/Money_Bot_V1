@@ -6,6 +6,7 @@ import weights_optimisation
 import sys
 import os 
 import csv
+import datetime
 
 """
 how to call:
@@ -236,6 +237,66 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         """
     print('DONE!!')
     return calls,puts # in case we want to just call this script directly from another python script
+
+def is_time_between(begin_time, end_time, check_time=None): # dun anyhow use i just copied this code from some stack overflow post and it doesnt work with less than 3 args
+    # If check time is not given, default to current UTC time
+    check_time = check_time or datetime.utcnow().time()
+    if begin_time < end_time:
+        return check_time >= begin_time and check_time <= end_time
+    else: # crosses midnight
+        return check_time >= begin_time or check_time <= end_time
+    
+def trading_hours(): # check if it is currently trading hours
+    return is_time_between(datetime.time(21,30), datetime.time(4,0), datetime.datetime.now().time())
+
+def weights_file_name(stock_name):
+    yesterday_date = str(datetime.date.today() - datetime.timedelta(days=1))
+    current_date = str(datetime.date.today())
+    if not trading_hours():
+        current_date = yesterday_date # no new market data yet if not during trading hours
+    weights_filename = 'Optimised-weights/'+current_date + '_' + stock_name +'_optimised-weights.txt'
+    return weights_filename
+
+def bad_optimise(stock_name): # detects if optimisation was bad
+    weights_filename = weights_file_name(stock_name)
+    weights_file = open(weights_filename, "r")
+    optimised_weights = []
+    optimised_weights_data = csv.reader(weights_file, delimiter='\n')
+    for row in optimised_weights_data:
+        optimised_weights.append(float(row[0]))
+    weights_file.close()
+    
+    baasly = 0
+    if sum(optimised_weights) == baasly: # if the previous optimisation was baasly (no samples with good success rate)
+        return True
+    else:
+        return False
+
+def cleanup(stock_list): # ONLY FOR TESTING PURPOSES! in actaul implementation the decision() function will just retry the optimisation
+    good_stock_list = []
+    for i in stock_list:
+        if not os.path.exists(weights_file_name(i)):
+            print('Weights file for '+ i +' does not exist!')
+            continue
+        if bad_optimise(i):
+            # remove the badly optimised weights file
+            print('Removed '+i)
+            continue # comment this off
+            os.remove(weights_file_name(i))
+        else:
+            # add to list of good stocks for trading
+            good_stock_list.append(i)
+    return good_stock_list
+"""
+example usage for the new cleanup() and function to pre-optimise our data
+stock_list = ["SPY", "TSLA", "NVDA", "V", "MA", "AMD", "PYPL", "GME", "PLTR", "MSFT", "GOOGL", "AAPL", "MU", "JPM", "DIS", "NFLX", "MMM", "CAT", "NKE", "WMT", "COST", "CSCO", "PFE", "SSL", "RIOT", "GILD", "AMZN", "BABA"]
+for i in stock_list:
+    print(decision(i))
+stock_list = cleanup(stock_list)
+"""
+
+
+
 
 # if len(sys.argv) != 4:
 #     print("Positional arguments:")
