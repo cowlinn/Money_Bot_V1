@@ -22,11 +22,11 @@ Some Results:
 - using 30 days of 15m data, backtest(data, 0.1, 0.3, 0.3, 0, 0.3) gives an insane result of (74.36, 56.2188720703125, 39)
   74% winrate over 39 trades plus a HUGE gain??
 """
+
+
 def forex(stock_name):
-    if stock_name.upper()[-2:] == '=X':
-        return True
-    else:
-        return False
+    return stock_name.upper()[-2:] == '=X'
+
 # stock_name = "SPY"
 # data_period = "4d"
 # resolution = "15m"
@@ -65,13 +65,13 @@ def backtest(data, ordered_weights, stock_name): # ordered_weights is a list of 
         #     # print(current_data['Datetime'])
         #     continue
         # opening positions
-        if output > 0.4:
+        if output >= 0.4:
             # print ('Buy a call at '+str(current_data['Datetime']))
             stoploss = current_data['Close']-current_data['ATR']*2
             takeprofit = current_data['Close']+current_data['ATR']*2.5
             calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
-        elif output < -0.4:
+        elif output <= -0.4:
             # print('Buy a put at '+str(current_data['Datetime']))
             stoploss = current_data['Close']+current_data['ATR']*2
             takeprofit = current_data['Close']-current_data['ATR']*2.5
@@ -124,10 +124,12 @@ def backtest(data, ordered_weights, stock_name): # ordered_weights is a list of 
     # if completed_trades == total_trades:
         # print('All', completed_trades, 'trades completed')
     if wins == 0:
-        winrate = 0
+        winrate = 0 # actually the trueWinrate for the case where no trades are made is 50%, for something like 0 wins 5 losses, the trueWinrate is 14%
+        # but we don't want any of these shitty strategies anyway so to ensure there is no chance it is included, we just return 0
         return winrate, gains, completed_trades
-    winrate = round(wins/completed_trades*100, 2)
-    return winrate, gains, completed_trades #, calls, puts
+    winrate = round(wins/completed_trades*100, 3)
+    trueWinrate = round((wins+1)/(completed_trades+2), 3) # differentiates between something like 3/5 and 60/100 (both have winrate of 60% but 3/5 has trueWinrate of 57.1% while 50/100 has trueWinrate of 59.8%)
+    return trueWinrate, gains, completed_trades #, calls, puts
 
 def initial_optimise(data, interval, stock_name, min_sample_size = 15):
     test_log = {}
@@ -224,5 +226,3 @@ def interpret(optimised_output, data, stock_name):
     for i in dic:
         ordered_weights.append(dic[i])
     return ordered_weights
-
-#optimise(data=data, interval=0.1, min_sample_size=5)
