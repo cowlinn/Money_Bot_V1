@@ -3,7 +3,7 @@ import datetime
 from datetime import datetime as dt
 from pytz import timezone
 import time
-import alpaca_trade_api as alpaca
+#import alpaca_trade_api as alpaca
 import json
 import smtplib
 from datetime import timedelta
@@ -14,7 +14,8 @@ import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 
-auth = json.loads(open('Auth/authDS.txt', 'r').read())
+auth = json.loads(open('Auth/grp_auth.txt', 'r').read())
+# current money_bot trades chat id is -1001987988217
 
 # class IBapi(EWrapper, EClient):
 #      def __init__(self):
@@ -47,7 +48,7 @@ apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey
 def send_tele_message(message):
     TOKEN = auth["TOKEN"]
     chat_id = auth["chat_id"]
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}&message_thread_id={thread_id}"
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}&disable_notification=true"
     requests.get(url).json()
 
 
@@ -305,5 +306,4 @@ def wma(ticker,key):
     return df
 
 
-send_tele_message("hello_world")
 
