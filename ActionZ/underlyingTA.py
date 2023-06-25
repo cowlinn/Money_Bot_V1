@@ -69,11 +69,12 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     optimised_weights = weights_optimisation.optimise(data, interval = optimisation_interval, min_sample_size = min_samples, stock_name = stock_name)
    
     # write optimised weigths to a file
-    parent_dir = 'Optimised-weights/'
     if trading_hours():
-        weights_file_name = current_date + '_' + stock_name +'_optimised-weights.txt'
+        parent_dir = 'Optimised-weights/' + current_date +'/'
+        weights_file_name = stock_name +'_optimised-weights.txt'
     elif not trading_hours():
-        weights_file_name = str(datetime.date.today()) + '_' + stock_name +'_optimised-weights.txt'
+        parent_dir = 'Optimised-weights/' + str(datetime.date.today()) +'/'
+        weights_file_name = stock_name +'_optimised-weights.txt'
     fullpath = os.path.join(parent_dir, weights_file_name)
     if not os.path.exists(parent_dir):
         os.mkdir(parent_dir)
@@ -105,8 +106,8 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        parent_dire = 'Trade-action-logs/'
-        filename = current_date + '_' + stock_name +'_call-logs.txt'
+        parent_dire = 'Trade-action-logs/' + current_date + '/'
+        filename = stock_name +'_call-logs.txt'
         fullpath = os.path.join(parent_dire, filename)
 
         if not os.path.exists(parent_dire):
@@ -128,8 +129,8 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        parent_dire = 'Trade-action-logs/'
-        filename = current_date + '_' + stock_name +'_put-logs.txt'
+        parent_dire = 'Trade-action-logs/' + current_date + '/'
+        filename = stock_name +'_put-logs.txt'
         fullpath = os.path.join(parent_dire, filename)
 
         if not os.path.exists(parent_dire):
@@ -164,11 +165,12 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     
     # get optimised weights by reading from file
-    parent_dir = 'Optimised-weights/'
     if trading_hours():
-        weights_file_name = current_date + '_' + stock_name +'_optimised-weights.txt'
+        parent_dir = 'Optimised-weights/'+ current_date +'/'
+        weights_file_name = stock_name +'_optimised-weights.txt'
     elif not trading_hours():
-        weights_file_name = str(datetime.date.today()) + '_' + stock_name +'_optimised-weights.txt'
+        parent_dir = 'Optimised-weights/'+ str(datetime.date.today()) +'/'
+        weights_file_name = stock_name +'_optimised-weights.txt'
     fullpath = os.path.join(parent_dir, weights_file_name)
     if not os.path.exists(fullpath): # if u call this as the first decision of the day
         print('Performing first optimisation of the day.')
@@ -207,8 +209,8 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        parent_dire = 'Trade-action-logs/'
-        filename = current_date + '_' + stock_name +'_call-logs.txt'
+        parent_dire = 'Trade-action-logs/' + current_date + '/'
+        filename = stock_name +'_call-logs.txt'
         fullpath = os.path.join(parent_dire, filename)
 
         if not os.path.exists(parent_dire):
@@ -230,8 +232,8 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        parent_dire = 'Trade-action-logs/'
-        filename = current_date + '_' + stock_name +'_put-logs.txt'
+        parent_dire = 'Trade-action-logs/' + current_date +'/'
+        filename = stock_name +'_put-logs.txt'
         fullpath = os.path.join(parent_dire, filename)
 
         if not os.path.exists(parent_dire):
@@ -270,11 +272,11 @@ def weights_file_name(stock_name):
     current_date = str(datetime.date.today())
     if not trading_hours():
         # current_date = yesterday_date # no new market data yet if not during trading hours so the latest file would have yesterday's date
-        weights_filename = 'Optimised-weights/'+ current_date + '_' + stock_name +'_optimised-weights.txt'
+        weights_filename = 'Optimised-weights/' + current_date + '/'+ stock_name +'_optimised-weights.txt'
     elif trading_hours() and is_time_between(datetime.time(21,30), datetime.time(23,59)):
-        weights_filename = 'Optimised-weights/'+ current_date + '_' + stock_name +'_optimised-weights.txt'
+        weights_filename = 'Optimised-weights/'+ current_date + '/' + stock_name +'_optimised-weights.txt'
     elif trading_hours() and is_time_between(datetime.time(0,0), datetime.time(4,5)):
-        weights_filename = 'Optimised-weights/'+ yesterday_date + '_' + stock_name +'_optimised-weights.txt'
+        weights_filename = 'Optimised-weights/'+ yesterday_date + '/' + stock_name +'_optimised-weights.txt'
     return weights_filename
 
 def bad_optimise(stock_name): # detects if optimisation was bad
@@ -294,8 +296,34 @@ def bad_optimise(stock_name): # detects if optimisation was bad
 
 # this is meant to be run outside of trading hours to prepare weights that will be read during trading hours
 # and to give a list of tickers we actually want to use
-def cleanup(stock_list): # ONLY FOR TESTING PURPOSES! in actaul implementation the decision() function will just retry the optimisation
+def cleanup(stock_list, retry_optimisation = False): # ONLY FOR TESTING PURPOSES! in actaul implementation the decision() function will just retry the optimisation
     good_stock_list = []
+    data = yf.Ticker(stock_list[0]).history(period = '1d', interval = '15m')
+    data.reset_index(inplace=True) # converts datetime to a column
+    current_date = str(data['Datetime'].iloc[-1]).split()[0]
+    if trading_hours():
+        parent_dir = 'Optimised-weights/'+ current_date +'/'
+    elif not trading_hours():
+        parent_dir = 'Optimised-weights/'+ str(datetime.date.today()) +'/'
+    
+    # if there has not been ANY optimisation run for that day yet, run optimisation for the list of stocks for that day
+    if not os.path.exists(parent_dir):
+        for stock_name in stock_list:
+                decision(stock_name) # write weights file
+
+    _, _, files = next(os.walk(parent_dir))
+    file_count = len(files)
+    if file_count == 0:
+        for stock_name in stock_list:
+                decision(stock_name) # write weights file
+
+    # if initial call of decision was not allowed to finish for stock_list, run optimisation for list of stocks
+    if file_count != len(stock_list) and retry_optimisation: # retries optimisation for any stocks that were skipped or was manually terminated
+        for stock_name in stock_list:
+            if not os.path.exists(weights_file_name(stock_name)):
+                # for the case where no weights file exists
+                decision(stock_name) # write a weights file
+
     # assuming optimsation was ran before trading hours, on a trading day, and it is STILL before trading hours        
     # OR the optimisation was ran DURING trading hours, and it is STILL trading hours
     for i in stock_list:

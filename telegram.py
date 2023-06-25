@@ -14,7 +14,7 @@ import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 
-auth = json.loads(open('Auth/col_auth.txt', 'r').read())
+auth = json.loads(open('Auth/authDS.txt', 'r').read())
 
 # class IBapi(EWrapper, EClient):
 #      def __init__(self):
@@ -47,7 +47,7 @@ apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey
 def send_tele_message(message):
     TOKEN = auth["TOKEN"]
     chat_id = auth["chat_id"]
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}&message_thread_id={thread_id}"
     requests.get(url).json()
 
 
