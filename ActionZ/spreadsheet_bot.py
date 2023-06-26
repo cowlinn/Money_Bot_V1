@@ -1,13 +1,17 @@
 import pandas as pd
 import pygsheets
 import sys
-
+import requests
 
 """
 HOW TO USE:
 # This bot is currently (25/6/2023) not allowed to create new Google Sheets so meake sure you have created the spreadsheet before using
+# UPDATE: (26/6/2023) spreadsheet bot is now able to create and delete Google Sheets. By default, the sheets will be added to the Money_bot folder
+# spreadsheet_bot can only delete Google Sheets it created. spreadsheet_bot cannot create new folders
+
 # I tried to implement error handling so you should be able to fix any errors by following the instructions that pop up in console
 # It's pretty much a wrapper for pygsheets so whenever we want to write to a google sheets we can just call a single function
+# As long as each file and folder has a unique name, we all g (bot will get confused bc I am identifying files and folders by their names)
 
 file_name = 'Test Sheet'
 
@@ -31,6 +35,7 @@ update_single_cell(file_name, cell_ID, '', sheet_number = 0, create_sheets = Fal
         update_single_cell(file_name, cell_ID1, "I'm going downwards!", sheet_number = 0, create_sheets = False)
         update_single_cell(file_name, cell_ID, "I'm going sideways!", sheet_number = 0, create_sheets = False)
 
+
 3. Write an entire dataframe
 import yfinance as yf
 import talib
@@ -49,6 +54,34 @@ update_dataframe(file_name, data, sheet_number = 0, starting_cell_ID = (1,1), cr
 sheet_name = 'New Sheet' # name of sheet to be added
 file_name = 'Test Sheet' 
 add_sheet(file_name, sheet_name = sheet_name)
+
+
+5. Create a new Google Sheets file and add it to a folder
+destination_folder = 'PnL'
+new_spreadsheet_name = 'demonstration spreadsheet'
+create_new_spreadsheet(new_spreadsheet_name, destination_folder_name = destination_folder)
+
+
+6. Delete a Google Sheets file created by spreadsheet_bot
+file_name = 'demonstration spreadsheet'
+delete_spreadsheet(file_name)
+
+
+7. Merge cells (WARNING: WILL DELETE DATA IN MERGED REGION)
+filename = 'Test Sheet'
+# remember, we can use A1 or G8 for the starting/ending cells also
+starting_cell = (1,1) # top left hand corner of your merge region
+ending_cell = (1,4) # bottom left hand corner of your merge region
+merge(filename, starting_cell, ending_cell, sheet_number = 0)
+
+
+8. Unmerge cells (WARNING: WILL DELETE DATA IN MERGED REGION)
+filename = 'Test Sheet'
+# remember, we can use A1 or G8 for the starting/ending cells also
+starting_cell = (1,1) # top left hand corner of your merge region
+ending_cell = (1,4) # bottom left hand corner of your merge region
+unmerge(filename, starting_cell, ending_cell, sheet_number = 0)
+
 """
 
 
@@ -88,7 +121,6 @@ row1 = values[0]
 row1col1 = values[0][0]
 row2col1 = values[1][0] # all values are strings
 """
-
 # tries to access the specified google sheets file. supposed to return some spreadsheet object.
 # will return a string 'Access Denied' if could not access
 def connect_to_file(file_name):
@@ -104,6 +136,22 @@ def connect_to_file(file_name):
         return error
         # sys.exit()
     return sh
+
+def folder_id_dict(client):
+    folders = {}
+    meta_list = client.drive.list() # get metadata
+    for file_meta in meta_list:
+        if file_meta['mimeType'] == 'application/vnd.google-apps.folder':
+            folders[file_meta['name']] = file_meta['id']
+    return folders
+
+def spreadsheet_id_dict(client):
+    files = {}
+    meta_list = client.drive.list()
+    for file_meta in meta_list:
+        if file_meta['mimeType'] == 'application/vnd.google-apps.spreadsheet':
+            files[file_meta['name']] = file_meta['id']
+    return files
 
 # adds a new unamed worksheet to the spreadsheet file sh
 # not meant to be called outside of this script!
@@ -173,3 +221,44 @@ def update_dataframe(file_name, dataframe, sheet_number = 0, starting_cell_ID = 
     if isinstance(wks, str):
         return wks
     wks.set_dataframe(dataframe, starting_cell_ID) # the tuple is (row, column)
+
+# delete a file by its filename (spreadsheet_bot is only authorized to delete spreadsheet files)
+# if you are already running some code with a spreadsheet object, you can you sh.delete() directly
+# NOTE: for now, spreadsheet_bot is only able to delete files it created (must be owner)
+def delete_spreadsheet(file_name):
+    gc = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json')
+    spreadsheet_ID = spreadsheet_id_dict(gc)[file_name]
+    gc.drive.delete(spreadsheet_ID)
+
+def create_new_spreadsheet(new_spreadsheet_name, destination_folder_name = 'Money_bot'):
+    gc = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json') # client
+    gc.create(new_spreadsheet_name) # create a bew spreadsheet
+    new_spreadsheet_ID = spreadsheet_id_dict(gc)[new_spreadsheet_name] # get the id of new spreadsheet
+    metadata = gc.drive.spreadsheet_metadata() # get metadata of all spreadsheets, including parent folder id
+    sorted_metadata = {}
+    for i in range(len(metadata)):
+        new_key = metadata[i]['name']
+        parent_folder_ID_value = metadata[i]['parents'][0] # assume only one parent folder
+        sorted_metadata[new_key] = parent_folder_ID_value
+    root_parent_folder_ID = sorted_metadata[new_spreadsheet_name]
+    try:
+        destination_folder_ID = gc.drive.get_folder_id(destination_folder_name)
+    except:
+        print('I do not have access to '+destination_folder_name+'!')
+        print('Add me as an editor to your google folder using the email below and try again.')
+        print('spreadsheet-bot@spreadsheet-bot-390911.iam.gserviceaccount.com')
+    gc.drive.move_file(new_spreadsheet_ID, root_parent_folder_ID, destination_folder_ID, body=None)
+
+# NOTE: after merging, the merge cell with have the same ID as the start_cell_ID
+# referring to any cells in the merged region besides the starting cell will have no effect
+def merge(file_name, start_cell_ID, end_cell_ID, sheet_number = 0):
+    sh, wks = establish_connection(file_name, sheet_number)
+    rng = wks.get_values(start_cell_ID, end_cell_ID, returnas='range')
+    rng.merge_cells()
+
+# NOTE: you have to give the same start_cell_ID and end_cell_ID as the original merged region
+# WARNING: merging and unmerging a cell WILL delete values in the merged region! When you unmerge, the value in the merged cell will go to the start_cell_ID coordinate
+def unmerge(file_name, start_cell_ID, end_cell_ID, sheet_number = 0):
+    sh, wks = establish_connection(file_name, sheet_number)
+    rng = wks.get_values(start_cell_ID, end_cell_ID, returnas='range')
+    rng.merge_cells(merge_type = 'NONE')
