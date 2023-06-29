@@ -51,9 +51,9 @@ def pm_optimise(x, threshold): # finds the optimal derivative (highest output of
     order = 0
     while clst.pmcheck(ordered_derivative(x, order)) < threshold and len(ordered_derivative(x, order).dropna()) > math.ceil(0.7*len(x)) and order<4:  # finds the derivative that meets a threshold value
         order +=1
-    # print(str(order)+"th derivative")
+    print(str(order)+"th derivative")
     y = ordered_derivative(x, order)
-    # print(clst.pmcheck(y))
+    print(clst.pmcheck(y))
     return y, order  # y is the first derivative that returns a pmcheck that is greater than the next derivative
 
 # given that the current magnitude is m what is the probability distribution of the magnitude of the next coordinate?
