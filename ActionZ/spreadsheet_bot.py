@@ -82,6 +82,15 @@ starting_cell = (1,1) # top left hand corner of your merge region
 ending_cell = (1,4) # bottom left hand corner of your merge region
 unmerge(filename, starting_cell, ending_cell, sheet_number = 0)
 
+
+# original file name is the file you want to copy
+# copy_file_name is the name that you want to give the copied file
+# destination folder is where you want to place the copy
+# use this like a linux command (cp filename copyfile .)
+9. Copy a file
+original_file_name = 'Test Sheet'
+copy(original_file_name, copy_file_name = None, destination_folder_name = None)
+
 """
 
 
@@ -121,6 +130,15 @@ row1 = values[0]
 row1col1 = values[0][0]
 row2col1 = values[1][0] # all values are strings
 """
+
+def print_access_denied_error_msg(file_name):
+    print('Spreadsheet-bot does not have access to '+file_name+'!')
+    print('Add me as an editor to your google folder using the email below and try again.')
+    print('spreadsheet-bot@spreadsheet-bot-390911.iam.gserviceaccount.com')
+    error = 'Access Denied'
+    print('\nERROR: '+error)
+    return error
+
 # tries to access the specified google sheets file. supposed to return some spreadsheet object.
 # will return a string 'Access Denied' if could not access
 def connect_to_file(file_name):
@@ -128,12 +146,7 @@ def connect_to_file(file_name):
     try:
         sh = gc.open(file_name) # remember to change this if you change the name
     except:
-        print('Spreadsheet-bot does not have access to '+file_name+'!')
-        print('Add me as an editor to your google sheet using the email below and try again.')
-        print('spreadsheet-bot@spreadsheet-bot-390911.iam.gserviceaccount.com')
-        error = 'Access Denied'
-        print('\nERROR: '+error)
-        return error
+        return print_access_denied_error_msg(file_name)
         # sys.exit()
     return sh
 
@@ -230,23 +243,26 @@ def delete_spreadsheet(file_name):
     spreadsheet_ID = spreadsheet_id_dict(gc)[file_name]
     gc.drive.delete(spreadsheet_ID)
 
-def create_new_spreadsheet(new_spreadsheet_name, destination_folder_name = 'Money_bot'):
-    gc = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json') # client
-    gc.create(new_spreadsheet_name) # create a bew spreadsheet
-    new_spreadsheet_ID = spreadsheet_id_dict(gc)[new_spreadsheet_name] # get the id of new spreadsheet
+# returns a dictionary where they keys are names of spreadsheets the bot has access to and the values are the folder_ID for the folder that each spreadsheet is in.
+def get_sorted_metadata(gc):
     metadata = gc.drive.spreadsheet_metadata() # get metadata of all spreadsheets, including parent folder id
     sorted_metadata = {}
     for i in range(len(metadata)):
         new_key = metadata[i]['name']
         parent_folder_ID_value = metadata[i]['parents'][0] # assume only one parent folder
         sorted_metadata[new_key] = parent_folder_ID_value
+    return sorted_metadata
+
+def create_new_spreadsheet(new_spreadsheet_name, destination_folder_name = 'Money_bot'):
+    gc = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json') # client
+    gc.create(new_spreadsheet_name) # create a bew spreadsheet
+    new_spreadsheet_ID = spreadsheet_id_dict(gc)[new_spreadsheet_name] # get the id of new spreadsheet
+    sorted_metadata = get_sorted_metadata(gc)
     root_parent_folder_ID = sorted_metadata[new_spreadsheet_name]
     try:
         destination_folder_ID = gc.drive.get_folder_id(destination_folder_name)
     except:
-        print('I do not have access to '+destination_folder_name+'!')
-        print('Add me as an editor to your google folder using the email below and try again.')
-        print('spreadsheet-bot@spreadsheet-bot-390911.iam.gserviceaccount.com')
+        return print_access_denied_error_msg(destination_folder_name)
     gc.drive.move_file(new_spreadsheet_ID, root_parent_folder_ID, destination_folder_ID, body=None)
 
 # NOTE: after merging, the merge cell with have the same ID as the start_cell_ID
@@ -262,3 +278,34 @@ def unmerge(file_name, start_cell_ID, end_cell_ID, sheet_number = 0):
     sh, wks = establish_connection(file_name, sheet_number)
     rng = wks.get_values(start_cell_ID, end_cell_ID, returnas='range')
     rng.merge_cells(merge_type = 'NONE')
+
+# find the name of a key, given a value
+# used to extract names from name:ID dictionaries
+def get_key_from_value(dictionary, wanted_val):
+    return [k for k,v in dictionary.items() if v == wanted_val][0] # assume no dupicate names
+
+
+# original file name is the file you want to copy
+# copy_file_name is the name that you want to give the copied file
+# destination folder is where you want to place the copy
+# use this like a linux command (cp filename copyfile .)
+def copy(original_file_name, copy_file_name = None, destination_folder_name = None):
+    gc = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json') # client
+    sorted_metadata = get_sorted_metadata(gc)
+    folder_ID_dict = folder_id_dict(gc)
+    if original_file_name not in sorted_metadata:
+        return print_access_denied_error_msg(original_file_name) # bot cannot access file to be copied
+    if destination_folder_name is None:
+        destination_folder_ID = sorted_metadata[original_file_name] # if no destination folder is specified, copy the file to the same folder as the original
+        destination_folder_name = get_key_from_value(folder_ID_dict, destination_folder_ID)
+    if destination_folder_name not in folder_ID_dict:
+        return print_access_denied_error_msg(destination_folder_name) # bot cannot access the desired destination folder
+    destination_folder_ID = gc.drive.get_folder_id(destination_folder_name)
+    if copy_file_name is None:
+        copy_file_name = original_file_name + '-Copy' # Adds a copy to the end of the name to differentiate (so the bot can tell the difference)
+        while copy_file_name in sorted_metadata:
+            copy_file_name = copy_file_name + '-Copy' # Adds a copy to the end of the name to differentiate (so the bot can tell the difference)
+    destination_folder_ID = gc.drive.get_folder_id(destination_folder_name)
+    original_spreadsheet_ID = spreadsheet_id_dict(gc)[original_file_name]
+    gc.drive.copy_file(original_spreadsheet_ID, copy_file_name, destination_folder_ID)
+
