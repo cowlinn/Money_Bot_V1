@@ -39,7 +39,7 @@ def menal(Nweights):
         baasly.append(entry)
     return baasly
 
-def backtest(data, ordered_weights, stock_name): # ordered_weights is a list of weights in the same order as the output of ta_lib.TA()
+def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weights is a list of weights in the same order as the output of ta_lib.TA()
     Nweights = len(ta_lib.TA(data, forex(stock_name)).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     if len(ordered_weights) != Nweights: # check if the input weights are valid
         print('Incorrect number of weights!')
@@ -65,13 +65,13 @@ def backtest(data, ordered_weights, stock_name): # ordered_weights is a list of 
         #     # print(current_data['Datetime'])
         #     continue
         # opening positions
-        if output >= 0.4:
+        if output >= threshold:
             # print ('Buy a call at '+str(current_data['Datetime']))
             stoploss = current_data['Close']-current_data['ATR']*2
             takeprofit = current_data['Close']+current_data['ATR']*2.5
             calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
-        elif output <= -0.4:
+        elif output <= -threshold:
             # print('Buy a put at '+str(current_data['Datetime']))
             stoploss = current_data['Close']+current_data['ATR']*2
             takeprofit = current_data['Close']-current_data['ATR']*2.5
@@ -131,7 +131,7 @@ def backtest(data, ordered_weights, stock_name): # ordered_weights is a list of 
     trueWinrate = round((wins+1)/(completed_trades+2), 3) # differentiates between something like 3/5 and 60/100 (both have winrate of 60% but 3/5 has trueWinrate of 57.1% while 50/100 has trueWinrate of 59.8%)
     return trueWinrate, gains, completed_trades #, calls, puts
 
-def initial_optimise(data, interval, stock_name, min_sample_size = 15):
+def initial_optimise(data, interval, stock_name, min_sample_size = 15, threshold = 0.4):
     test_log = {}
     iterr = range(0,int(1/interval))
     Nweights = len(ta_lib.TA(data, forex(stock_name)).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
@@ -139,7 +139,7 @@ def initial_optimise(data, interval, stock_name, min_sample_size = 15):
         for k in range(1, 1+Nweights):
             test_weight = i*interval
             name = str(test_weight) + ' ' + str(k)
-            result = backtest(data, interpret([(test_weight, k)], data, stock_name), stock_name)
+            result = backtest(data, interpret([(test_weight, k)], data, stock_name), stock_name, threshold = threshold)
             if result[2] >= min_sample_size and result[1] > 0: # only consider results with a min sample size and actual profit
                 test_log[name] = result[0]
     if test_log:
@@ -153,9 +153,9 @@ def initial_optimise(data, interval, stock_name, min_sample_size = 15):
     else:
         # no suitable optimisations found. not a good idea to trade.
         min_sample_size -= 1
-        return initial_optimise(data, interval, stock_name, min_sample_size) # reduce sample size requirement until some prediction is made?
+        return initial_optimise(data, interval, stock_name, min_sample_size, threshold = threshold) # reduce sample size requirement until some prediction is made?
 
-def second_optimise(data, interval, initial_results, stock_name, min_sample_size = 15):
+def second_optimise(data, interval, initial_results, stock_name, min_sample_size = 15, threshold = 0.4):
     fixed_weight_number_lst = []
     fixed_weight_dict = {}
     for i in range(len(initial_results)):
@@ -174,7 +174,7 @@ def second_optimise(data, interval, initial_results, stock_name, min_sample_size
             copy = initial_results.copy()
             copy.append((test_weight, k))
             input_weights = interpret(copy, data, stock_name)
-            result = backtest(data, input_weights, stock_name)
+            result = backtest(data, input_weights, stock_name, threshold = threshold)
             if result[2] >= min_sample_size and result[1] > 0:
                 test_log[name] = result[0]
     if test_log:
@@ -188,23 +188,26 @@ def second_optimise(data, interval, initial_results, stock_name, min_sample_size
         return final, test_log[best_weight]
     elif min_sample_size == 0: # if got no good options, dun anyhow trade
         devax = menal(Nweights) # just set all the weights to 0 to guarantee no trading occurs
-        return devax
+        return devax, 0
     else:
         # no suitable optimisations found. not a good idea to trade.
         min_sample_size -= 1
-        return second_optimise(data, interval, initial_results, stock_name, min_sample_size) # reduce sample size requirement until some prediction is made?
+        return second_optimise(data, interval, initial_results, stock_name, min_sample_size, threshold = threshold) # reduce sample size requirement until some prediction is made?
 
-def optimise(data, interval, min_sample_size, stock_name):
+def optimise(data, interval, min_sample_size, stock_name, threshold = 0.4):
     Nweights = len(ta_lib.TA(data, forex(stock_name)).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
-    initial = initial_optimise(data, interval, stock_name, min_sample_size)
-    second= second_optimise(data, interval, initial, stock_name, min_sample_size)[0]
-    while len(second) < Nweights-1:
-        second = second_optimise(data, interval, second, stock_name, min_sample_size)
+    initial = initial_optimise(data, interval, stock_name, min_sample_size, threshold = threshold)
+    second= second_optimise(data, interval, initial, stock_name, min_sample_size, threshold = threshold)
+    optimised_weights = second[0]
+    backtested_winrate = second[1]
+
+    while len(optimised_weights) < Nweights-1:
+        second = second_optimise(data, interval, optimised_weights, stock_name, min_sample_size, threshold = threshold)
         backtested_winrate = second[1]
-        second = second[0]
-    ordered_weights = interpret(second, data, stock_name)
+        optimised_weights = second[0]
+    ordered_weights = interpret(optimised_weights, data, stock_name)
     print('Backtested winrate:\n', str(backtested_winrate*100)+'%')
-    print('Ordered weights:\n', ordered_weights)
+    print('Ordered weights:\n', ordered_weights, '\n')
     return ordered_weights
  
 def interpret(optimised_output, data, stock_name):
