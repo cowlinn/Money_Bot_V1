@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import talib
+import cluster_prediction
+import clustering_model
 # import yfinance as yf
 
 """""
@@ -213,24 +215,42 @@ def trix_strategy(data):
         return -1
     else:
         return 0
+    
+def clustering_strategy(data):
+    increase = cluster_prediction.derivative(data['Close'])
+    cluster_data = clustering_model.f(cluster_prediction.pm_optimise(increase, 0.9)[0])[1]
+    latest_cluster = cluster_data.iloc[-1]
+    if latest_cluster > 1:
+        return True
+    else:
+        return False
 
 def TA(data, forex = False):
+    df = pd.DataFrame()
+    # indicators we using
+    df['RSI'] = [rsi_strategy(data)]
+    df['RSI_SMA'] = rsi_sma_strategy(data)
+    df['MACD'] = macd_strategy(data)
+    df['TRIX'] = trix_strategy(data)
+    
+    
+    # after doing all other TA strategies
+    overall_sentiment = df.values.sum()
+    cluster_results = clustering_strategy(data)
+    if not cluster_results:
+        df['ClUST'] = 0
+    
+    elif overall_sentiment > 0 and cluster_results:
+        df['ClUST'] = 1
+    elif overall_sentiment < 0 and cluster_results:
+        df['ClUST'] = -1
+    elif overall_sentiment == 0:
+        df['ClUST'] = 0
+    
+    
     if not forex:
-        df = pd.DataFrame()
-        # indicators we using
-        df['RSI'] = [rsi_strategy(data)]
-        df['RSI_SMA'] = rsi_sma_strategy(data)
-        df['MACD'] = macd_strategy(data)
         df['MFI'] = mfi_strategy(data)
-        df['TRIX'] = trix_strategy(data)
         return df
     else:
         # do not use volume data for forex (yfinance gives all 0 for volume of forex pairs)
-        df = pd.DataFrame()
-        # indicators we using
-        df['RSI'] = [rsi_strategy(data)]
-        df['RSI_SMA'] = rsi_sma_strategy(data)
-        df['MACD'] = macd_strategy(data)
-        # df['MFI'] = mfi_strategy(data)
-        df['TRIX'] = trix_strategy(data)
         return df
