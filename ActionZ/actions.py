@@ -30,7 +30,7 @@ def connection_teardown(my_ib):
     my_ib.disconnect() #disconnects the current ib_sync instance
     print("HL SAYS BYEBYE")
 #by default, we can req prev data
-spy_monitor = Stock('SPY', 'SMRT', 'USD') #ticker object to find stonks we are int in
+spy_monitor = Stock('SPY', 'SMART', 'USD') #ticker object to find stonks we are int in
 
 
 ##based on the stocks we are currently monitoring, display the result inside a Pandas DF
@@ -125,8 +125,9 @@ def make_trade(trade_dict, action, ticker, my_ib):
 
             #step 2: create the order 
             #TODO: check if buy or sell?
-            bracket_order = create_order(purchase_price, stoploss, take_profit, action)
-
+            bracket_order = create_order(my_ib,purchase_price, stoploss, take_profit, action)        
+            
+            #bracket_order = my_ib.bracketOrder(action, 20, purchase_price, take_profit, stoploss)
             #make the trade
             for o in bracket_order:
                 my_ib.placeOrder(contract, o)
@@ -166,35 +167,41 @@ def create_contract(ticker_name):
     contract.secType = 'STK'  # Security type: 'STK' for stock
     contract.exchange = 'SMART'  # Exchange: 'SMART' for SmartRouting
     contract.currency = 'USD'  # Currency
-    return contract
+
+
+    ##manually create a stonk, but we can use contract ig?
+    contract_stock = Stock(ticker_name,'SMART', 'USD')
+    return contract_stock
 
 
 
 ##TODO: check how to create order to buy (or short sell?)
-def create_order(purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
+## we buy one stock?
+def create_order(my_ib, purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
     # Define the parent order
-    parent_order = Order(
-        action=action,  # 'BUY' or 'SELL'
-        totalQuantity=order_size,  # Total quantity of the asset
-        orderType='MKT',  # Order type: 'LMT' for limit order
-        lmtPrice=purchase_price  # Limit price
-    )
+    # parent_order = Order(
+    #     action=action,  # 'BUY' or 'SELL'
+    #     totalQuantity=order_size,  # Total quantity of the asset
+    #     orderType='MKT',  # Order type: 'LMT' for limit order
+    #     lmtPrice=purchase_price  # Limit price
+    # )
 
-    # Define the stop-loss order
-    stop_loss_order = Order(
-        action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
-        totalQuantity=order_size,
-        orderType='STP',  # Order type: 'STP' for stop order
-        auxPrice=stoploss  # Stop price
-    )
+    # # Define the stop-loss order
+    # stop_loss_order = Order(
+    #     action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
+    #     totalQuantity=order_size,
+    #     orderType='STP',  # Order type: 'STP' for stop order
+    #     auxPrice=stoploss  # Stop price
+    # )
 
-    # Define the take-profit order
-    take_profit_order = Order(
-        action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
-        totalQuantity=order_size,
-        orderType='LMT',  # Order type: 'LMT' for limit order
-        lmtPrice=take_profit # Limit price
-    )
+    # # Define the take-profit order
+    # take_profit_order = Order(
+    #     action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
+    #     totalQuantity=order_size,
+    #     orderType='LMT',  # Order type: 'LMT' for limit order
+    #     lmtPrice=take_profit # Limit price
+    # )
 
-    bracket_order = BracketOrder(parent=parent_order, stopLoss=stop_loss_order, takeProfit=take_profit_order)
+    
+    bracket_order = my_ib.bracketOrder(action, 1, purchase_price, take_profit, stoploss)
     return bracket_order

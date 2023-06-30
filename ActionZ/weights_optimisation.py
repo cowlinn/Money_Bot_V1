@@ -179,13 +179,13 @@ def second_optimise(data, interval, initial_results, stock_name, min_sample_size
                 test_log[name] = result[0]
     if test_log:
         best_weight = max(test_log, key = test_log.get)
-        print(test_log[best_weight], best_weight)
+        # print(test_log[best_weight])
         second_lst = best_weight.split()
         second_lst[0] = float(second_lst[0])
         second_lst[1] = int(second_lst[1])
         final = initial_results.copy()
         final.append(tuple(second_lst)) # this changes the original result too (can use a shallow copy if this is not desired)
-        return final
+        return final, test_log[best_weight]
     elif min_sample_size == 0: # if got no good options, dun anyhow trade
         devax = menal(Nweights) # just set all the weights to 0 to guarantee no trading occurs
         return devax
@@ -197,11 +197,16 @@ def second_optimise(data, interval, initial_results, stock_name, min_sample_size
 def optimise(data, interval, min_sample_size, stock_name):
     Nweights = len(ta_lib.TA(data, forex(stock_name)).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     initial = initial_optimise(data, interval, stock_name, min_sample_size)
-    second= second_optimise(data, interval, initial, stock_name, min_sample_size)
+    second= second_optimise(data, interval, initial, stock_name, min_sample_size)[0]
     while len(second) < Nweights-1:
         second = second_optimise(data, interval, second, stock_name, min_sample_size)
-    return interpret(second, data, stock_name)
-
+        backtested_winrate = second[1]
+        second = second[0]
+    ordered_weights = interpret(second, data, stock_name)
+    print('Backtested winrate:\n', str(backtested_winrate*100)+'%')
+    print('Ordered weights:\n', ordered_weights)
+    return ordered_weights
+ 
 def interpret(optimised_output, data, stock_name):
     Nweights = len(ta_lib.TA(data, forex(stock_name)).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     if optimised_output == menal(Nweights):
