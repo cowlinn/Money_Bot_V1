@@ -15,9 +15,11 @@ ib = IB() #initialize main instance
 ##THIS IS OUR SINGLE SOURCE OF TRUTH 
 ##ON WHATEVER STOCKS WE ARE MONITORING
 
-current_stocks_to_monitor = stock_list = ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', 'GME', 'PLTR', 
-                                          'MSFT', 'GOOGL', 'JPM', 'DIS', 'NFLX', 'MMM', 'CAT', 'NKE', 'WMT',
-                                            'COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA']
+current_stocks_to_monitor =  ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', 'GME', 'PLTR', 
+                                'MSFT', 'GOOGL', 'JPM', 'DIS', 'NFLX', 'MMM', 'CAT', 'NKE', 
+                                'WMT','COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA']
+
+
 
 
 
@@ -73,7 +75,7 @@ def main(my_ib):
     ##So we cannot find previous data 
     prev_data = req_prev_data(my_ib)
 
-    
+    #current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
 
     run_trades(my_ib, current_stocks=current_stocks_to_monitor)
@@ -84,11 +86,11 @@ def main(my_ib):
 
 start_of_day(ib)
 
-#once every 15 minutes
+#once every 15 minutes, total of 5 hours (20 intervals)
 counter = 0
-while counter <= 50:
+while counter <= 20:
     main(ib)
-    time.sleep(300)
+    time.sleep(900)
     counter +=1 
 
 ###end of day 

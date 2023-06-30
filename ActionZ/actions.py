@@ -30,7 +30,7 @@ def connection_teardown(my_ib):
     my_ib.disconnect() #disconnects the current ib_sync instance
     print("HL SAYS BYEBYE")
 #by default, we can req prev data
-spy_monitor = Stock('SPY', 'SMRT', 'USD') #ticker object to find stonks we are int in
+spy_monitor = Stock('SPY', 'SMART', 'USD') #ticker object to find stonks we are int in
 
 
 ##based on the stocks we are currently monitoring, display the result inside a Pandas DF

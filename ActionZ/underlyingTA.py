@@ -150,6 +150,10 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
 
 # make a trading decision based on current available market information
 def decision(stock_name, data_period = '4d', resolution = '15m'):
+
+    #TODO: RESOLUTION CANNOT BE 1 MIN IF NOT DEVAX, RMB TO UNDO 
+    # CODE BELOW 
+    #resolution = "5m"
     calls = {}
     puts = {}
     if weights_optimisation.forex(stock_name):
