@@ -1,7 +1,7 @@
 import pandas as pd
 import pygsheets
-import sys
-import requests
+# import sys
+# import requests
 
 """
 HOW TO USE:
