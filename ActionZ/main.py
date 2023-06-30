@@ -17,9 +17,10 @@ ib = IB() #initialize main instance
 
 current_stocks_to_monitor =  ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', 'GME', 'PLTR', 
                                 'MSFT', 'GOOGL', 'JPM', 'DIS', 'NFLX', 'MMM', 'CAT', 'NKE', 
-                                'WMT','COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA']
+                                'WMT','COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA',
+                                'META', 'FSLR', 'ORCL', 'PEP', 'MCD', 'ABT', 'SBUX']
 
-
+current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
 
 
@@ -45,9 +46,15 @@ current_stocks_to_monitor =  ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', '
 #actions we run not as requently
 ##optimization basically fetches a bunch of "Weights" 
 ##for the day, that we will query based on
-def once_every_day():
+def once_every_day(my_ib):
     #check_prev_positions(ib)
     #run_optimization(current_stocks=current_stocks_to_monitor)
+
+    ##sample call on TSLA example (the key will be a date)
+    #sample_dict = {"key": (263.79  ,  251.12  ,  268.38)}
+    
+    ##buy TSLA!
+    #make_trade(sample_dict, 'BUY', 'TSLA', my_ib)
     pass
     
 
@@ -55,7 +62,7 @@ def once_every_day():
 ## start of day: connect bot
 def start_of_day(my_ib):
     connection_setup(my_ib)
-    once_every_day()
+    once_every_day(my_ib)
 
 ## end of day: disconnect bot 
 ## end all trades
