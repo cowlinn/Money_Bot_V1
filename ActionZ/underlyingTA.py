@@ -43,7 +43,7 @@ how to call:
         Should probably split it into multiple loops.
 """
 # make a trading decision based on current available market information
-def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first = True):
+def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first = True, threshold = 0.4):
     calls = {}
     puts = {}
     
@@ -66,7 +66,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     # get optimised weights by backtesting through the data_period. Weights have precision of 0.1
     # changed the precision to 0.01 (it takes about 3 min and 20s to run as compared to 20s for 0.1)
     # at 15m resolution the 3min is not THAT bad considering we only run this like once or twice a day?
-    optimised_weights = weights_optimisation.optimise(data, interval = optimisation_interval, min_sample_size = min_samples, stock_name = stock_name)
+    optimised_weights = weights_optimisation.optimise(data, interval = optimisation_interval, min_sample_size = min_samples, stock_name = stock_name, threshold = threshold)
    
     # write optimised weigths to a file
     if trading_hours():
@@ -84,7 +84,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         weights_file.write(str(i)+'\n')
     weights_file.close()
     
-    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name)
+    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name, threshold = threshold)
     if backtest_results[0] < 50:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
@@ -96,7 +96,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         overall_signal += optimised_weights[i]*unweighted_signals.iloc[0][i] # apply the weights
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
-    if overall_signal >= 0.4:
+    if overall_signal >= threshold:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*2
@@ -120,7 +120,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
-    elif overall_signal <= -0.4:
+    elif overall_signal <= -threshold:
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*2
         takeprofit = current_data['Close']-current_data['ATR']*2.5
@@ -149,7 +149,11 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     return calls,puts # in case we want to just call this script directly from another python script
 
 # make a trading decision based on current available market information
-def decision(stock_name, data_period = '4d', resolution = '15m'):
+def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4):
+
+    #TODO: RESOLUTION CANNOT BE 1 MIN IF NOT DEVAX, RMB TO UNDO 
+    # CODE BELOW 
+    #resolution = "5m"
     calls = {}
     puts = {}
     if weights_optimisation.forex(stock_name):
@@ -174,7 +178,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     fullpath = os.path.join(parent_dir, weights_file_name)
     if not os.path.exists(fullpath): # if u call this as the first decision of the day
         print('Performing first optimisation of the day.')
-        return optimise_decision(stock_name, data_period, resolution)
+        return optimise_decision(stock_name, data_period, resolution, threshold = threshold)
     weights_file = open(fullpath, "r")
     optimised_weights = []
     optimised_weights_data = csv.reader(weights_file, delimiter='\n')
@@ -185,9 +189,9 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
     baasly = 0
     if sum(optimised_weights) == baasly: # if the previous optimisation was baasly (no samples with good success rate)
         print('Previous optimisation unsuccessful, retrying optimsation!')
-        return optimise_decision(stock_name, data_period, resolution, first = False) # run the optimsation again and return the (potentially) new result instead. Also, rewrite the weights file if it is different
+        return optimise_decision(stock_name, data_period, resolution, first = False, threshold = threshold) # run the optimsation again and return the (potentially) new result instead. Also, rewrite the weights file if it is different
     
-    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name)
+    backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name, threshold = threshold)
     if backtest_results[0] < 50:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
@@ -199,7 +203,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         overall_signal += optimised_weights[i]*unweighted_signals.iloc[0][i] # apply the weights
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
-    if overall_signal >= 0.4:
+    if overall_signal >= threshold:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*2
@@ -223,7 +227,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m'):
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
-    elif overall_signal <= -0.4:
+    elif overall_signal <= -threshold:
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*2
         takeprofit = current_data['Close']-current_data['ATR']*2.5
@@ -296,7 +300,7 @@ def bad_optimise(stock_name): # detects if optimisation was bad
 
 # this is meant to be run outside of trading hours to prepare weights that will be read during trading hours
 # and to give a list of tickers we actually want to use
-def cleanup(stock_list, retry_optimisation = False): # ONLY FOR TESTING PURPOSES! in actaul implementation the decision() function will just retry the optimisation
+def cleanup(stock_list, retry_optimisation = False, threshold = 0.4): # ONLY FOR TESTING PURPOSES! in actaul implementation the decision() function will just retry the optimisation
     good_stock_list = []
     data = yf.Ticker(stock_list[0]).history(period = '1d', interval = '15m')
     data.reset_index(inplace=True) # converts datetime to a column
@@ -309,20 +313,20 @@ def cleanup(stock_list, retry_optimisation = False): # ONLY FOR TESTING PURPOSES
     # if there has not been ANY optimisation run for that day yet, run optimisation for the list of stocks for that day
     if not os.path.exists(parent_dir):
         for stock_name in stock_list:
-                decision(stock_name) # write weights file
+                decision(stock_name, threshold = threshold) # write a weights file
 
     _, _, files = next(os.walk(parent_dir))
     file_count = len(files)
     if file_count == 0:
         for stock_name in stock_list:
-                decision(stock_name) # write weights file
+                decision(stock_name, threshold = threshold) # write a weights file
 
     # if initial call of decision was not allowed to finish for stock_list, run optimisation for list of stocks
     if file_count != len(stock_list) and retry_optimisation: # retries optimisation for any stocks that were skipped or was manually terminated
         for stock_name in stock_list:
             if not os.path.exists(weights_file_name(stock_name)):
                 # for the case where no weights file exists
-                decision(stock_name) # write a weights file
+                decision(stock_name, threshold = threshold) # write a weights file
 
     # assuming optimsation was ran before trading hours, on a trading day, and it is STILL before trading hours        
     # OR the optimisation was ran DURING trading hours, and it is STILL trading hours
