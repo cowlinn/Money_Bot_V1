@@ -209,8 +209,8 @@ def establish_connection(file_name, sheet_number, create_sheets = False):
     return sh, wks
 
 # returns all the data in the spread sheet in the form of a 2D array
-def read_data(file_name, sheet_number = 0, create_sheets = False):
-    sh, wks = establish_connection(file_name, sheet_number, create_sheets)
+def read_data(file_name, sheet_number = 0):
+    sh, wks = establish_connection(file_name, sheet_number)
     if isinstance(sh, str):
         return sh
     if isinstance(wks, str):
