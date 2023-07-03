@@ -1,6 +1,8 @@
 import pandas as pd
 import spreadsheet_bot as bot
 import datetime
+import telegram as money_bot
+import accountant_bot_tele as my_tele
 
 # prepares a blank PnL template from scratch in case the original is deleted
 def create_PnL_template():
@@ -20,7 +22,7 @@ def create_PnL_template():
     bot.update_single_cell(file_name = file_name, cell_ID = 'A1', message = 'PnL for <stock_name>')
     bot.update_single_cell(file_name = file_name, cell_ID = 'I3', message = 'NOTE: Transaction_Value is its effect on our balance \n(if we buy a security, it has a negative Transaction_Value, because money goes out of our account) \n(if we sell a security, it has a positive Transaction_Value, because money enters our account)')
     bot.merge(file_name = file_name, start_cell_ID = 'A1', end_cell_ID = 'E1')
-    bot.merge(file_name = file_name, start_cell_ID = 'I3', end_cell_ID = 'R5',center = False)
+    bot.merge(file_name = file_name, start_cell_ID = 'I3', end_cell_ID = 'O5',center = False)
     
     # set up cumulative PnL
     cumulative_PnL = pd.DataFrame().reindex(columns = ['Cumulative_PnL:', '=SUM(D4:D1000)'])
@@ -69,7 +71,7 @@ def write_PnL(stock_name, data_to_write):
     
     # PnL has been created/exists
     read_Data = bot.read_data(PnL_file_name)
-    print('Now writing PnL for ' + stock_name)
+    print('Now writing PnL for ' + stock_name+'.')
     
     # find the first empty row from the top
     empty_row = 0
@@ -97,3 +99,10 @@ def write_PnL(stock_name, data_to_write):
 def list_to_df_columns(columns_list):
     df = pd.DataFrame().reindex(columns = columns_list) # this is how you write a single row of values btw
     return df
+
+# call this to give a daily summary on telegram
+# currently not working, my_tele.run() just prevents subsequent code from being run once infinity polling has started
+def give_tele_summary():
+    my_tele.run()
+    money_bot.send_tele_message('/dailysummary')
+    money_bot.send_tele_message('/stopbot')
