@@ -71,7 +71,7 @@ def weights_file_reader():
 def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weights is a list of weights in the same order as the output of ta_lib.TA()
     Nweights = len(ta_lib.TA(data, forex(stock_name)).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     if len(ordered_weights) != Nweights: # check if the input weights are valid
-        print('Incorrect number of weights!')
+        # print('Incorrect number of weights!')
         return
     data = data.copy()
     data.reset_index(inplace=True) # converts datetime to a column
@@ -95,13 +95,13 @@ def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weig
         #     continue
         # opening positions
         if output >= threshold:
-            print ('Buy a call at '+str(current_data['Datetime']))
+            # print ('Buy a call at '+str(current_data['Datetime']))
             stoploss = current_data['Close']-current_data['ATR']*1.5  #1.5 # set tighter stoploss/takeprofit
             takeprofit = current_data['Close']+current_data['ATR']*1.875  #1.875
             calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
         elif output <= -threshold:
-            print('Buy a put at '+str(current_data['Datetime']))
+            # print('Buy a put at '+str(current_data['Datetime']))
             stoploss = current_data['Close']+current_data['ATR']*1.5
             takeprofit = current_data['Close']-current_data['ATR']*1.875
             puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
@@ -115,15 +115,15 @@ def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weig
                 # stoploss triggered, close the position
                 losses += 1
                 gains += current_data['Close']-trade_info[0] # count the profit/loss
-                print('It is currently ' + str(current_data['Datetime']) + '. Sell the call purchased at ' + i)
-                print(trade_info[0]-current_data['Close'] ,'baaasly trade')
+                # print('It is currently ' + str(current_data['Datetime']) + '. Sell the call purchased at ' + i)
+                # print(trade_info[0]-current_data['Close'] ,'baaasly trade')
                 remove.append(i)
             elif current_data['Close'] > trade_info[2]:
                 # takeprofit reached, close the position
                 wins += 1
                 gains += current_data['Close']-trade_info[0] # count the profit/loss
-                print('It is currently ' + str(current_data['Datetime']) + '. Sell the call purchased at ' + i)
-                print(current_data['Close']-trade_info[0],'guuuud trade')
+                # print('It is currently ' + str(current_data['Datetime']) + '. Sell the call purchased at ' + i)
+                # print(current_data['Close']-trade_info[0],'guuuud trade')
                 remove.append(i)
         for i in remove:
                 # remove closed positions from dictionary of open positions
@@ -136,15 +136,15 @@ def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weig
                 # takeprofit reached, close the position
                 wins += 1
                 gains += trade_info[0]-current_data['Close'] # count the profit/loss
-                print('It is currently ' + str(current_data['Datetime']) + '. Sell the put purchased at ' + i)
-                print(trade_info[0]-current_data['Close'] ,'guuuud trade')
+                # print('It is currently ' + str(current_data['Datetime']) + '. Sell the put purchased at ' + i)
+                # print(trade_info[0]-current_data['Close'] ,'guuuud trade')
                 remove.append(i)
             elif current_data['Close'] > trade_info[1]:
                 # stoploss triggered, close the position
                 losses += 1
                 gains += trade_info[0]-current_data['Close'] # count the profit/loss
-                print('It is currently ' + str(current_data['Datetime']) + '. Sell the put purchased at ' + i)
-                print(trade_info[0]-current_data['Close'] ,'baaasly trade')
+                # print('It is currently ' + str(current_data['Datetime']) + '. Sell the put purchased at ' + i)
+                # print(trade_info[0]-current_data['Close'] ,'baaasly trade')
                 remove.append(i)
         for i in remove:
                 # remove closed positions from dictionary of open positions
