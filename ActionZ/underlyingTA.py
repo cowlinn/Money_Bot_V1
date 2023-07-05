@@ -85,7 +85,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     weights_file.close()
     
     backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name, threshold = threshold)
-    if backtest_results[0] < 50:
+    if backtest_results[0] < 0.5:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
     # get current trading signal using the weights
@@ -99,8 +99,8 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     if overall_signal >= threshold:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
-        stoploss = current_data['Close']-current_data['ATR']*2
-        takeprofit = current_data['Close']+current_data['ATR']*2.5
+        stoploss = current_data['Close']-current_data['ATR']*1.5
+        takeprofit = current_data['Close']+current_data['ATR']*1.875
         """
         Execute trade here? app.buy(call)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
@@ -122,8 +122,8 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         
     elif overall_signal <= -threshold:
         # print('Buy a put at '+str(current_data['Datetime']))
-        stoploss = current_data['Close']+current_data['ATR']*2
-        takeprofit = current_data['Close']-current_data['ATR']*2.5
+        stoploss = current_data['Close']+current_data['ATR']*1.5
+        takeprofit = current_data['Close']-current_data['ATR']*1.875
         """
         Execute trade here? app.buy(put)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
@@ -192,7 +192,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         return optimise_decision(stock_name, data_period, resolution, first = False, threshold = threshold) # run the optimsation again and return the (potentially) new result instead. Also, rewrite the weights file if it is different
     
     backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name, threshold = threshold)
-    if backtest_results[0] < 50:
+    if backtest_results[0] < 0.5:
         return ({}, {}) # do nothing if the current strategy is unlikely to work (has winrate < 50%)
     
     # get current trading signal using the weights
@@ -206,8 +206,8 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
     if overall_signal >= threshold:
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
-        stoploss = current_data['Close']-current_data['ATR']*2
-        takeprofit = current_data['Close']+current_data['ATR']*2.5
+        stoploss = current_data['Close']-current_data['ATR']*1.5
+        takeprofit = current_data['Close']+current_data['ATR']*1.875
         """
         Execute trade here? app.buy(call)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
@@ -229,8 +229,8 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         
     elif overall_signal <= -threshold:
         # print('Buy a put at '+str(current_data['Datetime']))
-        stoploss = current_data['Close']+current_data['ATR']*2
-        takeprofit = current_data['Close']-current_data['ATR']*2.5
+        stoploss = current_data['Close']+current_data['ATR']*1.5
+        takeprofit = current_data['Close']-current_data['ATR']*1.875
         """
         Execute trade here? app.buy(put)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
@@ -252,7 +252,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         """"
         Assume that the stoploss/take profit is set in the broker and it will auto close the position if either one is hit
         """
-    print('DONE!!')
+    print('DONE!!\n')
     return calls,puts # in case we want to just call this script directly from another python script
 
 # is the current time between a certain time period?

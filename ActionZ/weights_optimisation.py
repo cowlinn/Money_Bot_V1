@@ -3,6 +3,8 @@ import pandas as pd
 import ta_lib
 import talib
 import yfinance as yf
+import os
+import csv
 
 """
 how to call:
@@ -27,9 +29,9 @@ Some Results:
 def forex(stock_name):
     return stock_name.upper()[-2:] == '=X'
 
-# stock_name = "SPY"
-# data_period = "4d"
-# resolution = "15m"
+# stock_name = "AMZN"
+data_period = "3d" # set this to about 2-3 days for using weights_file_reader()
+resolution = "15m"
 # stock = yf.Ticker(stock_name)  # this goes in main()
 # data = stock.history(period = data_period, interval = resolution) # historical price data
 def menal(Nweights):
@@ -39,10 +41,37 @@ def menal(Nweights):
         baasly.append(entry)
     return baasly
 
+# function to make bactesting directly from weights files easier (AAR)
+# to use, just dump all the weights files into a test_data folder and run
+def weights_file_reader():
+    current_stocks_to_monitor =  ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', 'GME', 'PLTR', 
+                                    'MSFT', 'GOOGL', 'JPM', 'DIS', 'NFLX', 'MMM', 'CAT', 'NKE', 
+                                    'WMT','COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA',
+                                    'META', 'FSLR', 'ORCL', 'PEP', 'MCD', 'ABT', 'SBUX']
+    parent_dir = 'test_data/'
+    backtest_results = {}
+    for stock_name in current_stocks_to_monitor:
+        fullpath = os.path.join(parent_dir, f"{stock_name}_optimised-weights.txt")
+        if not os.path.exists(fullpath):
+            print(f'No weights file for {stock_name}')
+            print(fullpath)
+            continue
+        weights_file = open(fullpath, "r")
+        optimised_weights = []
+        optimised_weights_data = csv.reader(weights_file, delimiter='\n')
+        for row in optimised_weights_data:
+            optimised_weights.append(float(row[0]))
+        weights_file.close()
+        stock = yf.Ticker(stock_name)  # this goes in main()
+        data = stock.history(period = data_period, interval = resolution) # historical price data 
+        print(f"Now backtesting {stock_name}")
+        backtest_results[stock_name] = backtest(data, optimised_weights, stock_name)
+    return backtest_results
+
 def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weights is a list of weights in the same order as the output of ta_lib.TA()
     Nweights = len(ta_lib.TA(data, forex(stock_name)).iloc[0]) # number of weights required according to ta_lib.py (basically how many indactors we are using)
     if len(ordered_weights) != Nweights: # check if the input weights are valid
-        print('Incorrect number of weights!')
+        # print('Incorrect number of weights!')
         return
     data = data.copy()
     data.reset_index(inplace=True) # converts datetime to a column
@@ -67,14 +96,14 @@ def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weig
         # opening positions
         if output >= threshold:
             # print ('Buy a call at '+str(current_data['Datetime']))
-            stoploss = current_data['Close']-current_data['ATR']*2
-            takeprofit = current_data['Close']+current_data['ATR']*2.5
+            stoploss = current_data['Close']-current_data['ATR']*1.5  #1.5 # set tighter stoploss/takeprofit
+            takeprofit = current_data['Close']+current_data['ATR']*1.875  #1.875
             calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
         elif output <= -threshold:
             # print('Buy a put at '+str(current_data['Datetime']))
-            stoploss = current_data['Close']+current_data['ATR']*2
-            takeprofit = current_data['Close']-current_data['ATR']*2.5
+            stoploss = current_data['Close']+current_data['ATR']*1.5
+            takeprofit = current_data['Close']-current_data['ATR']*1.875
             puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
         
