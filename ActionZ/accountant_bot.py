@@ -1,8 +1,8 @@
 import pandas as pd
 import spreadsheet_bot as bot
 import datetime
-import telegram as money_bot
-import accountant_bot_tele as my_tele
+import json
+import requests
 
 # prepares a blank PnL template from scratch in case the original is deleted
 def create_PnL_template():
@@ -59,6 +59,7 @@ def write_PnL(stock_name, data_to_write):
     accessible_files = bot.spreadsheet_id_dict()
     # check if there is already a PnL spreadsheet for this ticker
     if not PnL_file_name in accessible_files:
+        send_tele_message(f'Now creating PnL for {stock_name}... ')
         # if no PnL exists, prepare the PnL for this stock
         # check if template exists
         # if no template
@@ -92,7 +93,7 @@ def write_PnL(stock_name, data_to_write):
     rael_data = data_to_write.rename(columns=data_to_write.iloc[0])
     rael_data.drop(index = data_to_write.index[0], axis =0, inplace = True)
     bot.update_dataframe(file_name = PnL_file_name, dataframe = rael_data, starting_cell_ID = (empty_row, 1))
-
+    send_tele_message(f'PnL for {stock_name} updated.')
 
 # convert a list into the columns of a dataframe
 # returns an empty list
@@ -100,9 +101,14 @@ def list_to_df_columns(columns_list):
     df = pd.DataFrame().reindex(columns = columns_list) # this is how you write a single row of values btw
     return df
 
-# call this to give a daily summary on telegram
-# currently not working, my_tele.run() just prevents subsequent code from being run once infinity polling has started
-def give_tele_summary():
-    my_tele.run()
-    money_bot.send_tele_message('/dailysummary')
-    money_bot.send_tele_message('/stopbot')
+def send_tele_message(message, chat_name = 'money_bot_trades', auth = json.loads(open('Auth/accountant_auth.txt', 'r').read())):
+    TOKEN = auth["TOKEN"]
+    if chat_name == 'money_bot_trades':
+        chat_id = auth["bot_chat_id"]
+    elif chat_name == 'money_bot':
+        chat_id = auth["main_chat_id"]
+    else:
+        print('No valid chat_name specified.')
+        return
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}&disable_notification=true"
+    requests.get(url).json()

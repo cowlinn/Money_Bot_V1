@@ -4,10 +4,10 @@ import telebot
 import datetime
 # import accountant_bot
 import time
-from telegram import send_tele_message as send_money_bot_message
 import spreadsheet_bot as ssb
 import random
 import os
+import yfinance as yf
 # from flask import Flask, request
 
 def get_token():
@@ -41,6 +41,12 @@ bot = telebot.TeleBot(get_token(),last_update_id=last_update_id)
 #     bot.reply_to(message, message.text)
 
 # used by moneybot to send a restart command to cancel out the previous /stopbot
+
+
+@bot.message_handler(commands=['help'])
+def send_halp(message):
+    bot.reply_to(message, "Here’s a list of commands currently implemented for accountant_bot: \n/stocksummary <stock_name1> <stock_name2> - this gives a summary of all stocks requested. \n/yearlysummary - this gives a summary across all stocks for the current year. You can specify the year as an optional argument if desired. \n/dailysummary - this gives a summary of all the trades we did in the most recent trading day across all stocks. A date can be specified in the format yyyy-mm-dd if you want to check our transactions on a certain date. \n/stopbot - stops the infinite polling and shuts the bot down. This is necessary if we want to edit the code for this bot. \n/goodbot - praises the bot.", disable_notification=True)
+
 @bot.message_handler(commands=['goodbot'])
 def send_thancc(message):
     outcome = random.random()
@@ -55,12 +61,69 @@ def send_restart(message):
 
 @bot.message_handler(commands=['dailysummary'])
 def send_dsummary(message):
-    bot.reply_to(message, "Daily summary requested.", disable_notification=True)
+    command_args = message.text.split()[1:]
+    if not command_args:
+        data = yf.Ticker('SPY').history(period = '1d', interval = '1d')
+        data.reset_index(inplace=True)
+        last_trading_day = str(data['Date']).split()[1]
+    elif len(command_args) > 1:
+        bot.reply_to(message, "Please specify one date at a time!", disable_notification=True)
+        return
+    elif len(command_args) == 1:
+        last_trading_day = command_args[0]
+    wantedYear = last_trading_day[:4]
+    bot.reply_to(message, f"Daily summary requested. Currently accessing available PnL sheets for {wantedYear}, please wait.", disable_notification=True)
+    accessible_files = ssb.spreadsheet_id_dict()
+    current_year_list_of_PnL = []
+    for sheet_name in accessible_files:
+        if sheet_name.endswith(f'-PnL-{wantedYear}'):
+            current_year_list_of_PnL.append(sheet_name)
+    if not current_year_list_of_PnL:
+        bot.send_message(message.chat.id, f"No PnLs for year {wantedYear} found! \nPlease enter a valid date!", disable_notification=True)
+        return
     
+    daily_cumulative_PnL = 0 # overall PnL for a given day
+    stock_name_to_stock_daily_cumulative_PnL = {} # cumulative PnL for the respective stonks
+    stock_name_list = []
+    for sheet_name in current_year_list_of_PnL:
+        data = ssb.read_data(sheet_name)
+        stock_name = data[0][0].split()[-1]
+        stock_daily_cumulative_PnL = 0        
+        for row in range(3, len(data)):
+            if data[row][0] == '':
+                break
+            if data[row][1][:10] == last_trading_day:
+                daily_cumulative_PnL += float(data[row][3])
+                stock_daily_cumulative_PnL += float(data[row][3])
+        if stock_daily_cumulative_PnL != 0:
+            stock_name_to_stock_daily_cumulative_PnL[stock_name] = stock_daily_cumulative_PnL
+            stock_name_list.append(stock_name)
+    if not stock_name_to_stock_daily_cumulative_PnL:
+        bot.send_message(message.chat.id, f"No recorded transactions on {last_trading_day}!", disable_notification=True)
+        return
+    biggest_winner = max(stock_name_to_stock_daily_cumulative_PnL, key=stock_name_to_stock_daily_cumulative_PnL.get)
+    biggest_PnL = str(stock_name_to_stock_daily_cumulative_PnL[biggest_winner])
+    biggest_loser = min(stock_name_to_stock_daily_cumulative_PnL, key=stock_name_to_stock_daily_cumulative_PnL.get)
+    smallest_PnL = str(stock_name_to_stock_daily_cumulative_PnL[biggest_loser])
+    
+    stock_name_str = ', '.join(stock_name_list)
+
+    if daily_cumulative_PnL >= 0:
+        bot.send_message(message.chat.id, f"We had trades for the following stocks on {last_trading_day}: \n{stock_name_str} \nAcross these stocks, we had a cumulative profit of {daily_cumulative_PnL} USD. \nGreat job! Keep it up and we go to da moon! \nYour biggest winner was {biggest_winner} with a cumulative PnL of {biggest_PnL} USD and your biggest loser was {biggest_loser} with a cumulative PnL of {smallest_PnL} USD.", disable_notification=True)
+    if daily_cumulative_PnL < 0:
+        bot.send_message(message.chat.id, f"We had trades for the following stocks on {last_trading_day}: \n{stock_name_str} \nAcross these stocks, we had a cumulative loss of {daily_cumulative_PnL} USD. \nBad job! Please work on your algo or something or we are going bankrupt. \nYour biggest winner was {biggest_winner} with a cumulative PnL of {biggest_PnL} USD and your biggest loser was {biggest_loser} with a cumulative PnL of {smallest_PnL} USD.", disable_notification=True)
+
 @bot.message_handler(commands=['yearlysummary'])
 def send_ysummary(message):
+    command_args = message.text.split()[1:]
     current_datetime = datetime.datetime.now()
-    current_year = str(current_datetime.year)
+    if not command_args:
+        current_year = str(current_datetime.year)
+    elif len(command_args) > 1:
+        bot.reply_to(message, "Please specify one year at a time!", disable_notification=True)
+        return
+    elif len(command_args) == 1:
+        current_year = command_args[0]
     bot.reply_to(message, f"Year to date summary requested. Currently accessing available PnL sheets for {current_year}, please wait.", disable_notification=True)
     accessible_files = ssb.spreadsheet_id_dict()
     current_year_list_of_PnL = []
@@ -69,7 +132,8 @@ def send_ysummary(message):
         if sheet_name.endswith(f'-PnL-{current_year}'):
             current_year_list_of_PnL.append(sheet_name)
     if not current_year_list_of_PnL:
-        bot.send_message(message.chat.id, f"No PnLs for {current_year} found!", disable_notification=True)
+        bot.send_message(message.chat.id, f"No PnLs for year {current_year} found! \nPlease enter a valid year!", disable_notification=True)
+        return
     total_cumulative_PnL = 0
     stock_name_list = []
     stock_name_to_cumulative_PnL_dict = {}
@@ -100,7 +164,7 @@ def send_ssummary(message):
     current_datetime = datetime.datetime.now()
     current_year = str(current_datetime.year)
     accessible_files = ssb.spreadsheet_id_dict()
-    if len(command_args) == 0:
+    if not command_args:
         bot.reply_to(message, "No stocks specified! \nUsage: /stocksummary <stock_name1> <stock_name2>", disable_notification=True)
 
     for stock_name in command_args:

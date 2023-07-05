@@ -252,7 +252,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         """"
         Assume that the stoploss/take profit is set in the broker and it will auto close the position if either one is hit
         """
-    print('DONE!!')
+    print('DONE!!\n')
     return calls,puts # in case we want to just call this script directly from another python script
 
 # is the current time between a certain time period?
