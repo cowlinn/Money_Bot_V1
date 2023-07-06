@@ -51,7 +51,7 @@ def req_prev_data(my_ib, duration_str='30 D'):
 def helper_list_print(message, lst):
     res = message + '\n'
     for i in range(len(lst)):
-        res += (f"{i}: {lst[i]}" + '/n')
+        res += (f"{i}: {lst[i]}" + '\n')
     send_tele_message(res)
 ##TODO: check what the format of this looks like, and sell stuff that we should
 
@@ -117,7 +117,7 @@ def make_trade(trade_dict, action, ticker, my_ib):
         purchase_price, stoploss, take_profit = trade_dict[date]
         current_funds = get_liquid_funds(my_ib)
 
-        if current_funds > purchase_price:
+        if current_funds > purchase_price: #shld be purchase * quantity tbh
             #make the trade?
             #step 1: create the contract
             contract = create_contract(ticker_name=ticker)
@@ -129,11 +129,18 @@ def make_trade(trade_dict, action, ticker, my_ib):
             
             #bracket_order = my_ib.bracketOrder(action, 20, purchase_price, take_profit, stoploss)
             #make the trade
+            is_parent_trade = True
             for o in bracket_order:
-                my_ib.placeOrder(contract, o)
+
+                trade = my_ib.placeOrder(contract, o)
+                my_ib.sleep(5) #general wait to gather
+                if is_parent_trade:
+                    while not trade.isDone():
+                        my_ib.waitOnUpdate()
+                    is_parent_trade = False #only wait for the parent to go in 
 
             #trade = ib.placeOrder(contract, bracket_order)
-            my_ib.sleep(1)  # Sleep for a moment to allow trade executio
+            #my_ib.sleep(25)  # Sleep for a moment to allow trade executio
             # Check the order status of the most recent one?
             order_status = my_ib.trades()[-1].orderStatus 
 
@@ -148,6 +155,7 @@ def make_trade(trade_dict, action, ticker, my_ib):
 def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
     for ticker_name in current_stocks:
         print(f"checking to see if there are good trades for {ticker_name}")
+        send_tele_message(f"checking to see if there are good trades for {ticker_name}")
         decision = underlyingTA.decision(ticker_name) # it will just write a bunch of log files
 
 

@@ -15,10 +15,11 @@ ib = IB() #initialize main instance
 ##THIS IS OUR SINGLE SOURCE OF TRUTH 
 ##ON WHATEVER STOCKS WE ARE MONITORING
 
-current_stocks_to_monitor =  ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', 'GME', 'PLTR', 
-                                'MSFT', 'GOOGL', 'JPM', 'DIS', 'NFLX', 'MMM', 'CAT', 'NKE', 
-                                'WMT','COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA',
-                                'META', 'FSLR', 'ORCL', 'PEP', 'MCD', 'ABT', 'SBUX']
+current_stocks_to_monitor =  ['TSLA', 'NVDA', 'MA', 'PYPL', 'GME', 
+                              'MSFT', 'GOOGL', 'DIS', 'NFLX', 
+                              'MMM', 'NKE', 'WMT', 'COST', 'CSCO', 'PFE', 'SSL',
+                                'RIOT', 'GILD', 'BABA', 'META',
+                               'FSLR', 'ORCL', 'PEP', 'MCD', 'ABT', 'SBUX']
 
 current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
