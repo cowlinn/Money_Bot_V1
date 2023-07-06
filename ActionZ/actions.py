@@ -30,7 +30,7 @@ def connection_teardown(my_ib):
     my_ib.disconnect() #disconnects the current ib_sync instance
     print("HL SAYS BYEBYE")
 #by default, we can req prev data
-spy_monitor = Stock('SPY', 'SMRT', 'USD') #ticker object to find stonks we are int in
+spy_monitor = Stock('SPY', 'SMART', 'USD') #ticker object to find stonks we are int in
 
 
 ##based on the stocks we are currently monitoring, display the result inside a Pandas DF
@@ -51,7 +51,7 @@ def req_prev_data(my_ib, duration_str='30 D'):
 def helper_list_print(message, lst):
     res = message + '\n'
     for i in range(len(lst)):
-        res += (f"{i}: {lst[i]}" + '/n')
+        res += (f"{i}: {lst[i]}" + '\n')
     send_tele_message(res)
 ##TODO: check what the format of this looks like, and sell stuff that we should
 
@@ -117,7 +117,7 @@ def make_trade(trade_dict, action, ticker, my_ib):
         purchase_price, stoploss, take_profit = trade_dict[date]
         current_funds = get_liquid_funds(my_ib)
 
-        if current_funds > purchase_price:
+        if current_funds > purchase_price: #shld be purchase * quantity tbh
             #make the trade?
             #step 1: create the contract
             contract = create_contract(ticker_name=ticker)
@@ -125,14 +125,22 @@ def make_trade(trade_dict, action, ticker, my_ib):
 
             #step 2: create the order 
             #TODO: check if buy or sell?
-            bracket_order = create_order(purchase_price, stoploss, take_profit, action)
-
+            bracket_order = create_order(my_ib,purchase_price, stoploss, take_profit, action)        
+            
+            #bracket_order = my_ib.bracketOrder(action, 20, purchase_price, take_profit, stoploss)
             #make the trade
+            is_parent_trade = True
             for o in bracket_order:
-                my_ib.placeOrder(contract, o)
+
+                trade = my_ib.placeOrder(contract, o)
+                my_ib.sleep(5) #general wait to gather
+                if is_parent_trade:
+                    while not trade.isDone():
+                        my_ib.waitOnUpdate()
+                    is_parent_trade = False #only wait for the parent to go in 
 
             #trade = ib.placeOrder(contract, bracket_order)
-            my_ib.sleep(1)  # Sleep for a moment to allow trade executio
+            #my_ib.sleep(25)  # Sleep for a moment to allow trade executio
             # Check the order status of the most recent one?
             order_status = my_ib.trades()[-1].orderStatus 
 
@@ -147,6 +155,7 @@ def make_trade(trade_dict, action, ticker, my_ib):
 def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
     for ticker_name in current_stocks:
         print(f"checking to see if there are good trades for {ticker_name}")
+        send_tele_message(f"checking to see if there are good trades for {ticker_name}")
         decision = underlyingTA.decision(ticker_name) # it will just write a bunch of log files
 
 
@@ -166,35 +175,41 @@ def create_contract(ticker_name):
     contract.secType = 'STK'  # Security type: 'STK' for stock
     contract.exchange = 'SMART'  # Exchange: 'SMART' for SmartRouting
     contract.currency = 'USD'  # Currency
-    return contract
+
+
+    ##manually create a stonk, but we can use contract ig?
+    contract_stock = Stock(ticker_name,'SMART', 'USD')
+    return contract_stock
 
 
 
 ##TODO: check how to create order to buy (or short sell?)
-def create_order(purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
+## we buy one stock?
+def create_order(my_ib, purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
     # Define the parent order
-    parent_order = Order(
-        action=action,  # 'BUY' or 'SELL'
-        totalQuantity=order_size,  # Total quantity of the asset
-        orderType='MKT',  # Order type: 'LMT' for limit order
-        lmtPrice=purchase_price  # Limit price
-    )
+    # parent_order = Order(
+    #     action=action,  # 'BUY' or 'SELL'
+    #     totalQuantity=order_size,  # Total quantity of the asset
+    #     orderType='MKT',  # Order type: 'LMT' for limit order
+    #     lmtPrice=purchase_price  # Limit price
+    # )
 
-    # Define the stop-loss order
-    stop_loss_order = Order(
-        action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
-        totalQuantity=order_size,
-        orderType='STP',  # Order type: 'STP' for stop order
-        auxPrice=stoploss  # Stop price
-    )
+    # # Define the stop-loss order
+    # stop_loss_order = Order(
+    #     action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
+    #     totalQuantity=order_size,
+    #     orderType='STP',  # Order type: 'STP' for stop order
+    #     auxPrice=stoploss  # Stop price
+    # )
 
-    # Define the take-profit order
-    take_profit_order = Order(
-        action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
-        totalQuantity=order_size,
-        orderType='LMT',  # Order type: 'LMT' for limit order
-        lmtPrice=take_profit # Limit price
-    )
+    # # Define the take-profit order
+    # take_profit_order = Order(
+    #     action='SELL'if action=='BUY' else 'BUY',  # Opposite action of the parent order
+    #     totalQuantity=order_size,
+    #     orderType='LMT',  # Order type: 'LMT' for limit order
+    #     lmtPrice=take_profit # Limit price
+    # )
 
-    bracket_order = BracketOrder(parent=parent_order, stopLoss=stop_loss_order, takeProfit=take_profit_order)
+    
+    bracket_order = my_ib.bracketOrder(action, 1, purchase_price, take_profit, stoploss)
     return bracket_order

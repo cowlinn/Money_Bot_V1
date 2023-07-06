@@ -15,9 +15,13 @@ ib = IB() #initialize main instance
 ##THIS IS OUR SINGLE SOURCE OF TRUTH 
 ##ON WHATEVER STOCKS WE ARE MONITORING
 
-current_stocks_to_monitor = stock_list = ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD', 'PYPL', 'GME', 'PLTR', 
-                                          'MSFT', 'GOOGL', 'JPM', 'DIS', 'NFLX', 'MMM', 'CAT', 'NKE', 'WMT',
-                                            'COST', 'CSCO', 'PFE', 'SSL', 'RIOT', 'GILD', 'AMZN', 'BABA']
+current_stocks_to_monitor =  ['TSLA', 'NVDA', 'MA', 'PYPL', 'GME', 
+                              'MSFT', 'GOOGL', 'DIS', 'NFLX', 
+                              'MMM', 'NKE', 'WMT', 'COST', 'CSCO', 'PFE', 'SSL',
+                                'RIOT', 'GILD', 'BABA', 'META',
+                               'FSLR', 'ORCL', 'PEP', 'MCD', 'ABT', 'SBUX']
+
+current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
 
 
@@ -43,9 +47,15 @@ current_stocks_to_monitor = stock_list = ['SPY', 'TSLA', 'NVDA', 'V', 'MA', 'AMD
 #actions we run not as requently
 ##optimization basically fetches a bunch of "Weights" 
 ##for the day, that we will query based on
-def once_every_day():
+def once_every_day(my_ib):
     #check_prev_positions(ib)
     #run_optimization(current_stocks=current_stocks_to_monitor)
+
+    ##sample call on TSLA example (the key will be a date)
+    #sample_dict = {"key": (263.79  ,  251.12  ,  268.38)}
+    
+    ##buy TSLA!
+    #make_trade(sample_dict, 'BUY', 'TSLA', my_ib)
     pass
     
 
@@ -53,7 +63,7 @@ def once_every_day():
 ## start of day: connect bot
 def start_of_day(my_ib):
     connection_setup(my_ib)
-    once_every_day()
+    once_every_day(my_ib)
 
 ## end of day: disconnect bot 
 ## end all trades
@@ -73,7 +83,7 @@ def main(my_ib):
     ##So we cannot find previous data 
     prev_data = req_prev_data(my_ib)
 
-    
+    #current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
 
     run_trades(my_ib, current_stocks=current_stocks_to_monitor)
@@ -84,11 +94,11 @@ def main(my_ib):
 
 start_of_day(ib)
 
-#once every 15 minutes
+#once every 15 minutes, total of 5 hours (20 intervals)
 counter = 0
-while counter <= 50:
+while counter <= 20:
     main(ib)
-    time.sleep(300)
+    time.sleep(900)
     counter +=1 
 
 ###end of day 

@@ -150,7 +150,9 @@ def connect_to_file(file_name):
         # sys.exit()
     return sh
 
-def folder_id_dict(client):
+def folder_id_dict(client=None):
+    if client is None:
+        client = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json')
     folders = {}
     meta_list = client.drive.list() # get metadata
     for file_meta in meta_list:
@@ -158,7 +160,9 @@ def folder_id_dict(client):
             folders[file_meta['name']] = file_meta['id']
     return folders
 
-def spreadsheet_id_dict(client):
+def spreadsheet_id_dict(client=None):
+    if client is None:
+        client = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json')
     files = {}
     meta_list = client.drive.list()
     for file_meta in meta_list:
@@ -205,8 +209,8 @@ def establish_connection(file_name, sheet_number, create_sheets = False):
     return sh, wks
 
 # returns all the data in the spread sheet in the form of a 2D array
-def read_data(file_name, sheet_number = 0, create_sheets = False):
-    sh, wks = establish_connection(file_name, sheet_number, create_sheets)
+def read_data(file_name, sheet_number = 0):
+    sh, wks = establish_connection(file_name, sheet_number)
     if isinstance(sh, str):
         return sh
     if isinstance(wks, str):
@@ -267,10 +271,16 @@ def create_new_spreadsheet(new_spreadsheet_name, destination_folder_name = 'Mone
 
 # NOTE: after merging, the merge cell with have the same ID as the start_cell_ID
 # referring to any cells in the merged region besides the starting cell will have no effect
-def merge(file_name, start_cell_ID, end_cell_ID, sheet_number = 0):
+def merge(file_name, start_cell_ID, end_cell_ID, sheet_number = 0, center = True):
     sh, wks = establish_connection(file_name, sheet_number)
     rng = wks.get_values(start_cell_ID, end_cell_ID, returnas='range')
     rng.merge_cells()
+    final_cell = wks.cell(start_cell_ID)
+    final_cell.set_vertical_alignment(pygsheets.custom_types.VerticalAlignment.MIDDLE)      # always set vertical alignment to middle
+
+    if center:
+        final_cell.set_horizontal_alignment(pygsheets.custom_types.HorizontalAlignment.CENTER) # basically merge and center option
+        
 
 # NOTE: you have to give the same start_cell_ID and end_cell_ID as the original merged region
 # WARNING: merging and unmerging a cell WILL delete values in the merged region! When you unmerge, the value in the merged cell will go to the start_cell_ID coordinate

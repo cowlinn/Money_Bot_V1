@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import talib
-import cluster_prediction
-import clustering_model
+# import cluster_prediction
+# import clustering_model
 # import yfinance as yf
 
 """""
@@ -235,17 +235,17 @@ def TA(data, forex = False):
     
     
     # after doing all other TA strategies
-    overall_sentiment = df.values.sum()
-    cluster_results = clustering_strategy(data)
-    if not cluster_results:
-        df['ClUST'] = 0
+    # overall_sentiment = df.values.sum()
+    # cluster_results = clustering_strategy(data)
+    # if not cluster_results:
+    #     df['ClUST'] = 0
     
-    elif overall_sentiment > 0 and cluster_results:
-        df['ClUST'] = 1
-    elif overall_sentiment < 0 and cluster_results:
-        df['ClUST'] = -1
-    elif overall_sentiment == 0:
-        df['ClUST'] = 0
+    # elif overall_sentiment > 0 and cluster_results:
+    #     df['ClUST'] = 1
+    # elif overall_sentiment < 0 and cluster_results:
+    #     df['ClUST'] = -1
+    # elif overall_sentiment == 0:
+    #     df['ClUST'] = 0
     
     
     if not forex:
