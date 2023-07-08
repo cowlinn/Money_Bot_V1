@@ -185,7 +185,7 @@ def create_contract(ticker_name):
 
 ##TODO: check how to create order to buy (or short sell?)
 ## we buy one stock?
-def create_order(my_ib, purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
+def create_order(my_ib:IB , purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
     # Define the parent order
     # parent_order = Order(
     #     action=action,  # 'BUY' or 'SELL'
@@ -212,4 +212,5 @@ def create_order(my_ib, purchase_price, stoploss, take_profit, order_size=100, a
 
     
     bracket_order = my_ib.bracketOrder(action, 1, purchase_price, take_profit, stoploss)
+    bracket_order.parent.orderType = 'MKT'
     return bracket_order
