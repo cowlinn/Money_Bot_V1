@@ -56,7 +56,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     stock = yf.Ticker(stock_name)  # this goes in main()
     data = stock.history(period = data_period, interval = resolution) # historical price data
     data.reset_index(inplace=True) # converts datetime to a column
-    data['ATR'] = talib.ATR(data['High'], data['Low'], data['Close'])
+    data['ATR'] = talib.ATR(data['High'].to_numpy(), data['Low'].to_numpy(), data['Close'].to_numpy())
     current_data = data.iloc[-1] 
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     min_samples = int(data_period[:-1]) # average of 1 trade per day?
@@ -164,7 +164,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
     stock = yf.Ticker(stock_name)  # this goes in main()
     data = stock.history(period = data_period, interval = resolution) # historical price data
     data.reset_index(inplace=True) # converts datetime to a column
-    data['ATR'] = talib.ATR(data['High'], data['Low'], data['Close'])
+    data['ATR'] = talib.ATR(data['High'].to_numpy(), data['Low'].to_numpy(), data['Close'].to_numpy())
     current_data = data.iloc[-1] 
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     
