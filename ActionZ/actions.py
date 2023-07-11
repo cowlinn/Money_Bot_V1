@@ -214,4 +214,5 @@ def create_order(my_ib:IB , purchase_price, stoploss, take_profit, order_size=10
     
     bracket_order = my_ib.bracketOrder(action, 1, purchase_price, take_profit, stoploss)
     bracket_order.parent.orderType = 'MKT'
+    bracket_order.parent.transmit = True
     return bracket_order
