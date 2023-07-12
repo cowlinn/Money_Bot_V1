@@ -121,12 +121,13 @@ def make_trade(trade_dict, action, ticker, my_ib):
             #make the trade?
             #step 1: create the contract
             contract = create_contract(ticker_name=ticker)
-
+            my_ib.qualifyContracts(contract)
 
             #step 2: create the order 
             #TODO: check if buy or sell?
-            bracket_order = create_order(my_ib,purchase_price, stoploss, take_profit, action)        
+            bracket_order = create_order(my_ib,purchase_price, stoploss, take_profit, order_size=1, action=action)        
             
+            send_tele_message(f"should be doing a {action} for {ticker} with price {purchase_price}, stoploss: {stoploss}, take_profit: {take_profit}")
             #bracket_order = my_ib.bracketOrder(action, 20, purchase_price, take_profit, stoploss)
             #make the trade
             is_parent_trade = True
@@ -185,7 +186,7 @@ def create_contract(ticker_name):
 
 ##TODO: check how to create order to buy (or short sell?)
 ## we buy one stock?
-def create_order(my_ib, purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
+def create_order(my_ib:IB , purchase_price, stoploss, take_profit, order_size=100, action='BUY'):
     # Define the parent order
     # parent_order = Order(
     #     action=action,  # 'BUY' or 'SELL'
@@ -212,4 +213,6 @@ def create_order(my_ib, purchase_price, stoploss, take_profit, order_size=100, a
 
     
     bracket_order = my_ib.bracketOrder(action, 1, purchase_price, take_profit, stoploss)
+    bracket_order.parent.orderType = 'MKT'
+    bracket_order.parent.transmit = True
     return bracket_order
