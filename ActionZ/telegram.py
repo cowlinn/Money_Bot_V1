@@ -13,8 +13,8 @@ import csv
 import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
-
-auth = json.loads(open('Auth/grp_auth.txt', 'r').read())
+from money_bot_env_reader import get_env
+# auth = json.loads(open('Auth/grp_auth.txt', 'r').read())
 # current money_bot trades chat id is -1001987988217
 
 # class IBapi(EWrapper, EClient):
@@ -46,8 +46,9 @@ apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey
 
 ############################################## Telegram Bot - @monymoney_bot ######################################################################
 def send_tele_message(message):
-    TOKEN = auth["TOKEN"]
-    chat_id = auth["chat_id"]
+    auth = get_env(env_file='money_bot.env')
+    TOKEN = auth["MONEY_BOT_TELE_TOKEN"]
+    chat_id = auth["MONEY_BOT_TRADES_CHAT_ID"]
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}&disable_notification=true"
     requests.get(url).json()
 

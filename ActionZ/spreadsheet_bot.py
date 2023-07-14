@@ -1,5 +1,8 @@
 import pandas as pd
 import pygsheets
+import tempfile
+import json
+import money_bot_env_reader
 # import sys
 # import requests
 
@@ -130,6 +133,25 @@ row1 = values[0]
 row1col1 = values[0][0]
 row2col1 = values[1][0] # all values are strings
 """
+def _google_creds_as_file():
+    auth = money_bot_env_reader.get_env()
+    AUTH = {}
+    # set up info
+    AUTH["type"] = auth["type"]
+    AUTH["project_id"] = auth["project_id"]
+    AUTH["private_key_id"] = auth["ssb_private_key_id"]
+    AUTH["private_key"] = auth["ssb_private_key"]
+    AUTH["client_email"] = auth["client_email"]
+    AUTH["client_id"] = auth["client_id"]
+    AUTH["auth_uri"] = auth["auth_uri"]
+    AUTH["token_uri"] = auth["token_uri"]
+    AUTH["auth_provider_x509_cert_url"] = auth["auth_provider_x509_cert_url"]
+    AUTH["client_x509_cert_url"] = auth["client_x509_cert_url"]
+    tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+    json.dump(AUTH, tfile)
+    tfile.flush()
+    return tfile
+# creds_file = _google_creds_as_file().name
 
 def print_access_denied_error_msg(file_name):
     print('Spreadsheet-bot does not have access to '+file_name+'!')
@@ -142,7 +164,9 @@ def print_access_denied_error_msg(file_name):
 # tries to access the specified google sheets file. supposed to return some spreadsheet object.
 # will return a string 'Access Denied' if could not access
 def connect_to_file(file_name):
+    # tfile = _google_creds_as_file().name
     gc = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json')
+    # gc = pygsheets.authorize(service_account_env_var='GDRIVE_API_CREDENTIALS')
     try:
         sh = gc.open(file_name) # remember to change this if you change the name
     except:
