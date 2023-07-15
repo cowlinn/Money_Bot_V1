@@ -7,6 +7,7 @@ import sys
 import os 
 import csv
 import datetime
+import underlyingTA_db
 # ALL TIMES ARE IN SINGAPORE TIME (GMT +8)
 """
 how to call:
@@ -56,7 +57,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     stock = yf.Ticker(stock_name)  # this goes in main()
     data = stock.history(period = data_period, interval = resolution) # historical price data
     data.reset_index(inplace=True) # converts datetime to a column
-    data['ATR'] = talib.ATR(data['High'], data['Low'], data['Close'])
+    data['ATR'] = talib.ATR(data['High'].to_numpy(), data['Low'].to_numpy(), data['Close'].to_numpy())
     current_data = data.iloc[-1] 
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     min_samples = int(data_period[:-1]) # average of 1 trade per day?
@@ -70,19 +71,28 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
    
     # write optimised weigths to a file
     if trading_hours():
-        parent_dir = 'Optimised-weights/' + current_date +'/'
-        weights_file_name = stock_name +'_optimised-weights.txt'
+        use_date = current_date
+        # parent_dir = 'Optimised-weights/' + current_date +'/'
+        # weights_file_name = stock_name +'_optimised-weights.txt'
     elif not trading_hours():
-        parent_dir = 'Optimised-weights/' + str(datetime.date.today()) +'/'
-        weights_file_name = stock_name +'_optimised-weights.txt'
-    fullpath = os.path.join(parent_dir, weights_file_name)
-    if not os.path.exists(parent_dir):
-        os.mkdir(parent_dir)
-    weights_file = open(fullpath, "w") # "w" because we only want ONE set of weights at a time for a given ticker on a given trading day
+        use_date = str(datetime.date.today())
+        # parent_dir = 'Optimised-weights/' + str(datetime.date.today()) +'/'
+        # weights_file_name = stock_name +'_optimised-weights.txt'
+    # fullpath = os.path.join(parent_dir, weights_file_name)
+    # if not os.path.exists(parent_dir):
+    #     os.makedirs(parent_dir)
+    # instead of writing to a .txt file, we will write the data to a db file
+    # weights_file = open(fullpath, "w") # "w" because we only want ONE set of weights at a time for a given ticker on a given trading day
     # assume we want to keep logs of the weights for each day for now, if we dun need can just remove current-date from the filename
-    for i in optimised_weights:
-        weights_file.write(str(i)+'\n')
-    weights_file.close()
+    # for i in optimised_weights:
+    #     weights_file.write(str(i)+'\n')
+    # weights_file.close()
+    
+    # write to the Optimised-weights.db database
+    ID = use_date+stock_name
+    dbweights = underlyingTA_db.list_to_string(optimised_weights)
+    insert_tuple = (ID, use_date, stock_name, dbweights)
+    underlyingTA_db.write_weights_to_db(insert_tuple)
     
     backtest_results = weights_optimisation.backtest(data, optimised_weights, stock_name, threshold = threshold)
     if backtest_results[0] < 0.5:
@@ -97,6 +107,7 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
     if overall_signal >= threshold:
+        Type = 'CALL'
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*1.5
@@ -106,21 +117,30 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        parent_dire = 'Trade-action-logs/' + current_date + '/'
-        filename = stock_name +'_call-logs.txt'
-        fullpath = os.path.join(parent_dire, filename)
+        # parent_dire = 'Trade-action-logs/' + current_date + '/'
+        # filename = stock_name +'_call-logs.txt'
+        # fullpath = os.path.join(parent_dire, filename)
 
-        if not os.path.exists(parent_dire):
-            os.mkdir(parent_dire)
+        # if not os.path.exists(parent_dire):
+        #     os.makedirs(parent_dire)
             
-        call_file = open(fullpath, "a+")
-        # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
-        call_file.write(str(current_data['Datetime']) + '\t' + str(current_data['Close']) + '\t' + str(stoploss) + '\t' + str(takeprofit) + '\n')
-        call_file.close()
+        # call_file = open(fullpath, "a+")
+        # # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
+        # call_file.write(str(current_data['Datetime']) + '\t' + str(current_data['Close']) + '\t' + str(stoploss) + '\t' + str(takeprofit) + '\n')
+        # call_file.close()
+        
+        # write trade actions to a db
+        dateTime = str(current_data['Datetime'])
+        ID = dateTime+stock_name+Type
+        currentPrice = current_data['Close']
+        insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
+        underlyingTA_db.write_trade_actions_to_db(insert_tuple)
+        
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
     elif overall_signal <= -threshold:
+        Type = 'PUT'
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*1.5
         takeprofit = current_data['Close']-current_data['ATR']*1.875
@@ -129,17 +149,25 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
         # write trade actions to a file
-        parent_dire = 'Trade-action-logs/' + current_date + '/'
-        filename = stock_name +'_put-logs.txt'
-        fullpath = os.path.join(parent_dire, filename)
+        # parent_dire = 'Trade-action-logs/' + current_date + '/'
+        # filename = stock_name +'_put-logs.txt'
+        # fullpath = os.path.join(parent_dire, filename)
 
-        if not os.path.exists(parent_dire):
-            os.mkdir(parent_dire)
+        # if not os.path.exists(parent_dire):
+        #     os.makedirs(parent_dire)
 
-        put_file = open(fullpath, "a+")
-        # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
-        put_file.write(str(current_data['Datetime']) + '\t' + str(current_data['Close']) + '\t' + str(stoploss) + '\t' + str(takeprofit) + '\n')
-        put_file.close()
+        # put_file = open(fullpath, "a+")
+        # # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
+        # put_file.write(str(current_data['Datetime']) + '\t' + str(current_data['Close']) + '\t' + str(stoploss) + '\t' + str(takeprofit) + '\n')
+        # put_file.close()
+        
+        # write trade actions to a db
+        dateTime = str(current_data['Datetime'])
+        ID = dateTime+stock_name+Type
+        currentPrice = current_data['Close']
+        insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
+        underlyingTA_db.write_trade_actions_to_db(insert_tuple)
+
         puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         """"
@@ -164,27 +192,26 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
     stock = yf.Ticker(stock_name)  # this goes in main()
     data = stock.history(period = data_period, interval = resolution) # historical price data
     data.reset_index(inplace=True) # converts datetime to a column
-    data['ATR'] = talib.ATR(data['High'], data['Low'], data['Close'])
+    data['ATR'] = talib.ATR(data['High'].to_numpy(), data['Low'].to_numpy(), data['Close'].to_numpy())
     current_data = data.iloc[-1] 
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     
     # get optimised weights by reading from file
     if trading_hours():
-        parent_dir = 'Optimised-weights/'+ current_date +'/'
-        weights_file_name = stock_name +'_optimised-weights.txt'
+        use_date = current_date
     elif not trading_hours():
-        parent_dir = 'Optimised-weights/'+ str(datetime.date.today()) +'/'
-        weights_file_name = stock_name +'_optimised-weights.txt'
-    fullpath = os.path.join(parent_dir, weights_file_name)
-    if not os.path.exists(fullpath): # if u call this as the first decision of the day
+        use_date = str(datetime.date.today())
+    readID = use_date+stock_name
+    optimised_weights = underlyingTA_db.read_weights_from_db((readID,))
+    if optimised_weights is None: # if u call this as the first decision of the day
         print('Performing first optimisation of the day.')
         return optimise_decision(stock_name, data_period, resolution, threshold = threshold)
-    weights_file = open(fullpath, "r")
-    optimised_weights = []
-    optimised_weights_data = csv.reader(weights_file, delimiter='\n')
-    for row in optimised_weights_data:
-        optimised_weights.append(float(row[0]))
-    weights_file.close()
+    # weights_file = open(fullpath, "r") # instead of reading from a .txt, we will read from a db file here
+    # optimised_weights = []
+    # optimised_weights_data = csv.reader(weights_file, delimiter='\n')
+    # for row in optimised_weights_data:
+    #     optimised_weights.append(float(row[0]))
+    # weights_file.close()
     
     baasly = 0
     if sum(optimised_weights) == baasly: # if the previous optimisation was baasly (no samples with good success rate)
@@ -204,6 +231,7 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
 
     # make the decisions based on the same thresholds used in weights_optimisation.py
     if overall_signal >= threshold:
+        Type = 'CALL'
         # price predicted to go up
         # print ('Buy a call at '+str(current_data['Datetime']))
         stoploss = current_data['Close']-current_data['ATR']*1.5
@@ -212,22 +240,18 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         Execute trade here? app.buy(call)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
-        # write trade actions to a file
-        parent_dire = 'Trade-action-logs/' + current_date + '/'
-        filename = stock_name +'_call-logs.txt'
-        fullpath = os.path.join(parent_dire, filename)
+        dateTime = str(current_data['Datetime'])
+        ID = dateTime+stock_name+Type
+        currentPrice = current_data['Close']
+        insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
+        underlyingTA_db.write_trade_actions_to_db(insert_tuple)
 
-        if not os.path.exists(parent_dire):
-            os.mkdir(parent_dire)
-            
-        call_file = open(fullpath, "a+")
-        # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
-        call_file.write(str(current_data['Datetime']) + '\t' + str(current_data['Close']) + '\t' + str(stoploss) + '\t' + str(takeprofit) + '\n')
-        call_file.close()
+
         calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
     elif overall_signal <= -threshold:
+        Type = 'PUT'
         # print('Buy a put at '+str(current_data['Datetime']))
         stoploss = current_data['Close']+current_data['ATR']*1.5
         takeprofit = current_data['Close']-current_data['ATR']*1.875
@@ -235,18 +259,12 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         Execute trade here? app.buy(put)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
-        # write trade actions to a file
-        parent_dire = 'Trade-action-logs/' + current_date +'/'
-        filename = stock_name +'_put-logs.txt'
-        fullpath = os.path.join(parent_dire, filename)
+        dateTime = str(current_data['Datetime'])
+        ID = dateTime+stock_name+Type
+        currentPrice = current_data['Close']
+        insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
+        underlyingTA_db.write_trade_actions_to_db(insert_tuple)
 
-        if not os.path.exists(parent_dire):
-            os.mkdir(parent_dire)
-
-        put_file = open(fullpath, "a+")
-        # data is written in the format of transaction timestamp, underlying price at time of purchase, stoploss, takeprofit
-        put_file.write(str(current_data['Datetime']) + '\t' + str(current_data['Close']) + '\t' + str(stoploss) + '\t' + str(takeprofit) + '\n')
-        put_file.close()
         puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         """"
@@ -271,27 +289,23 @@ def start_of_day(): # check if it is currently within the first 3 hours of the t
 # returns the weights_filename the current trading day if we are during trading hours
 # or the upcoming trading if we are running before market open
 # basically returns the "most relevant" weights file we should be reading
-def weights_file_name(stock_name):
+def check_weights(stock_name):
     yesterday_date = str(datetime.date.today() - datetime.timedelta(days=1))
     current_date = str(datetime.date.today())
     if not trading_hours():
-        # current_date = yesterday_date # no new market data yet if not during trading hours so the latest file would have yesterday's date
-        weights_filename = 'Optimised-weights/' + current_date + '/'+ stock_name +'_optimised-weights.txt'
+        use_date = current_date
     elif trading_hours() and is_time_between(datetime.time(21,30), datetime.time(23,59)):
-        weights_filename = 'Optimised-weights/'+ current_date + '/' + stock_name +'_optimised-weights.txt'
+        use_date = current_date
     elif trading_hours() and is_time_between(datetime.time(0,0), datetime.time(4,5)):
-        weights_filename = 'Optimised-weights/'+ yesterday_date + '/' + stock_name +'_optimised-weights.txt'
-    return weights_filename
+        use_date = yesterday_date
+    # try and read the weights
+    readID = use_date+stock_name
+    optimised_weights = underlyingTA_db.read_weights_from_db((readID,))
+
+    return optimised_weights
 
 def bad_optimise(stock_name): # detects if optimisation was bad
-    weights_filename = weights_file_name(stock_name)
-    weights_file = open(weights_filename, "r")
-    optimised_weights = []
-    optimised_weights_data = csv.reader(weights_file, delimiter='\n')
-    for row in optimised_weights_data:
-        optimised_weights.append(float(row[0]))
-    weights_file.close()
-    
+    optimised_weights = check_weights(stock_name)    
     baasly = 0
     if sum(optimised_weights) == baasly: # if the previous optimisation was baasly (no samples with good success rate)
         return True
@@ -306,45 +320,49 @@ def cleanup(stock_list, retry_optimisation = False, threshold = 0.4): # ONLY FOR
     data.reset_index(inplace=True) # converts datetime to a column
     current_date = str(data['Datetime'].iloc[-1]).split()[0]
     if trading_hours():
-        parent_dir = 'Optimised-weights/'+ current_date +'/'
+        use_date  = current_date
     elif not trading_hours():
-        parent_dir = 'Optimised-weights/'+ str(datetime.date.today()) +'/'
+        use_date = str(datetime.date.today())
     
+    read_weights = underlyingTA_db.read_weights_by_date((use_date,))
     # if there has not been ANY optimisation run for that day yet, run optimisation for the list of stocks for that day
-    if not os.path.exists(parent_dir):
+    if not read_weights:
         for stock_name in stock_list:
                 decision(stock_name, threshold = threshold) # write a weights file
 
-    _, _, files = next(os.walk(parent_dir))
-    file_count = len(files)
-    if file_count == 0:
-        for stock_name in stock_list:
-                decision(stock_name, threshold = threshold) # write a weights file
-
+    # _, _, files = next(os.walk(parent_dir))
+    # file_count = len(files)
+    # if file_count == 0:
+    #     for stock_name in stock_list:
+    #             decision(stock_name, threshold = threshold) # write a weights file
+    existing_weights_list = []
+    for entry in read_weights:
+        existing_weights_list.append(entry[2]) # append the stock_name that have weights in the db
     # if initial call of decision was not allowed to finish for stock_list, run optimisation for list of stocks
-    if file_count != len(stock_list) and retry_optimisation: # retries optimisation for any stocks that were skipped or was manually terminated
+    if len(read_weights) != len(stock_list) and retry_optimisation: # retries optimisation for any stocks that were skipped or was manually terminated
         for stock_name in stock_list:
-            if not os.path.exists(weights_file_name(stock_name)):
+            if stock_name not in existing_weights_list:
                 # for the case where no weights file exists
                 decision(stock_name, threshold = threshold) # write a weights file
 
     # assuming optimsation was ran before trading hours, on a trading day, and it is STILL before trading hours        
     # OR the optimisation was ran DURING trading hours, and it is STILL trading hours
-    for i in stock_list:
-        if not os.path.exists(weights_file_name(i)): # look for weights_file dated for TODAY
-            print('Weights file for '+ i +' dated for '+str(datetime.date.today())+' does not exist!')
+    for stock_name in stock_list:
+        if check_weights(stock_name) is None: # look for weights_file dated for TODAY
+            print('Weights file for '+ stock_name +' dated for '+str(datetime.date.today())+' does not exist!')
             continue
         
         # remove the badly optimised weights file
-        if bad_optimise(i):
-            print('Removed '+i)
-            os.remove(weights_file_name(i))
+        if bad_optimise(stock_name):
+            print('Removed '+stock_name)
+            removeID = use_date + stock_name
+            underlyingTA_db.delete_weights_from_db((removeID,))
         else:
             # if not trading_hours(): # prepare the weight files to be read the when trading opens
             #     current_date = str(datetime.date.today())
             #     new_filename = 'Optimised-weights/'+current_date + '_' + i +'_optimised-weights.txt'
             #     os.rename(weights_file_name(i), new_filename) # prepare the weight files to be read the when trading opens if it is currently before trading hours
-            good_stock_list.append(i)  # add to list of good stocks for trading 
+            good_stock_list.append(stock_name)  # add to list of good stocks for trading 
     return good_stock_list
 
 """

@@ -122,9 +122,9 @@ def beta_strategy(data):
     return data
 
 def macd_strategy(data):
-    macd = talib.MACD(data['Close'])[2]
-    latest_val = macd.iloc[-1]
-    previous_val = macd.iloc[-2]
+    macd = talib.MACD(data['Close'].to_numpy())[2]
+    latest_val = macd[-1]
+    previous_val = macd[-2]
     if latest_val > 0 and previous_val < 0:
         return 1
     if latest_val < 0 and previous_val > 0:
@@ -133,8 +133,8 @@ def macd_strategy(data):
         return 0
 
 def mfi_strategy(data):
-    MFI = talib.MFI(data['High'], data['Low'], data['Close'], data['Volume'], timeperiod=14)  
-    latest_val = MFI.iloc[-1]
+    MFI = talib.MFI(data['High'], data['Low'], data['Close'], data['Volume'], timeperiod=14)   # I tried converting the inputs to np arrays but it gave an error Exception: input array type is not double
+    latest_val = MFI.iloc[-1]                                                                  # If still devax, lmk @darie
     if latest_val > 80:
         return -1
     elif latest_val < 20:
@@ -165,8 +165,8 @@ def roc_strategy(data):
 
 
 def rsi_strategy(data):
-    RSI = talib.RSI(data['Close'], timeperiod=14)
-    latest_val = RSI.iloc[-1]
+    RSI = talib.RSI(data['Close'].to_numpy(), timeperiod=14)
+    latest_val = RSI[-1]
     if latest_val < 30:
         return 1
     elif latest_val >70:
@@ -175,7 +175,7 @@ def rsi_strategy(data):
         return 0
 
 def rsi_sma_strategy(data):
-    RSI = talib.RSI(data['Close'], timeperiod=14)
+    RSI = talib.RSI(data['Close'].to_numpy(), timeperiod=14)
     rolling_window = 14
     RSI_sma = pd.Series(RSI).rolling(rolling_window).mean() # SMA of RSI over 14 periods
     latest_val = RSI_sma.iloc[-1]
@@ -206,9 +206,9 @@ def stochrsi_strategy(data):
 
 
 def trix_strategy(data):
-    TRIX = talib.TRIX(data['Close'], timeperiod=18) 
-    latest_val = TRIX.iloc[-1]
-    previous_val = TRIX.iloc[-2]
+    TRIX = talib.TRIX(data['Close'].to_numpy(), timeperiod=18) 
+    latest_val = TRIX[-1]
+    previous_val = TRIX[-2]
     if latest_val > 0 and previous_val < 0:
         return 1
     if latest_val < 0 and previous_val > 0:

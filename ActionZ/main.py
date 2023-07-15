@@ -1,6 +1,7 @@
 from actions import *
 from weights_optimisation import *
 from ib_insync import * 
+import pickle 
 
 
 
@@ -23,6 +24,16 @@ current_stocks_to_monitor =  ['TSLA', 'NVDA', 'MA', 'PYPL', 'GME',
 
 current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
+
+day_actions = dict()
+current_actions_monitoring = "monitoring_actions.txt"
+if not os.path.isfile(current_actions_monitoring): #first day setup
+    day_actions_file = open(current_actions_monitoring, "wb+")
+    day_actions_file.close()
+else:
+    day_actions_file = open(current_actions_monitoring, "rb") #read file
+    day_actions = pickle.load(day_actions_file)
+    day_actions_file.close()
 
 
 
@@ -69,6 +80,9 @@ def start_of_day(my_ib):
 ## end all trades
 def end_of_day(my_ib):
     connection_teardown(my_ib)
+    day_actions_file = open(current_actions_monitoring, "wb") #need to write bytes to it for binary serialization
+    pickle.dump(day_actions, day_actions_file)
+    day_actions_file.close()
 
 
 #main seq of events
@@ -77,7 +91,7 @@ def main(my_ib):
 
     ##TODO: for the actual options bot, we need to manually check Theta
     ##ad sell our open options based on theta
-    check_prev_positions(my_ib)
+    check_prev_positions(my_ib, day_actions)
 
     ##TODO: we dun have subscription yet / not trading hours 
     ##So we cannot find previous data 
@@ -86,7 +100,7 @@ def main(my_ib):
     #current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
 
-    run_trades(my_ib, current_stocks=current_stocks_to_monitor)
+    run_trades(my_ib, day_actions, current_stocks=current_stocks_to_monitor)
 
 
 
