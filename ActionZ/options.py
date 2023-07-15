@@ -8,8 +8,9 @@ import pytz
 import requests
 
 
-## Long call, Long Put, Long Straddle, Long Strangle
+## Long call, Long Put, Long Straddle, Long Strangle 
 ## Have something to indicate earnings season
+## Have something to indicate whether we are bullihs/bearish/neutral
 
 
 # We need to come up with something that determine the number of days to expiry (Need to be fixed)
@@ -47,6 +48,46 @@ def find_option_contract(symbol, predicted_price, expiry_days, max_price, option
 
 try_out = find_option_contract("AAPL", 200, 6, 100, "call")
 print(try_out)
+
+def find_long_straddle(symbol, curr_price, expiry_days, max_price):
+    us_timezone = pytz.timezone('America/New_York')
+    us_time =  datetime.now(us_timezone)
+    formatted_date = us_time.strftime("%y%m%d")
+    days_to_add = expiry_days
+    expiry_date = us_time + timedelta(days=days_to_add)
+    print(formatted_date)
+    print(expiry_date.strftime("%y%m%d"))
+
+    # Fetch option chain
+    option_chain = yf.Ticker(symbol).option_chain()
+
+    available_option_dates = yf.Ticker(symbol).options
+    
+    calls = option_chain.calls
+    puts = option_chain.puts
+
+    calls = calls[calls['lastPrice'] <= max_price]
+    puts = puts[puts['lastPrice'] <= max_price]
+    calls = calls[calls['contractSymbol'].str.contains(expiry_date.strftime("%y%m%d"))]
+    puts = puts[puts['contractSymbol'].str.contains(expiry_date.strftime("%y%m%d"))]
+    
+    # Find the closest match for the strike price
+    closest_call_strike = calls['strike'].iloc[(calls['strike'] - curr_price).abs().idxmin()]
+    closest_put_strike = puts['strike'].iloc[(puts['strike'] - curr_price).abs().idxmin()]
+    
+    # Filter options based on the closest strike price
+    closest_call_option = calls[calls['strike'] == closest_call_strike]
+    closest_put_option = puts[puts['strike'] == closest_put_strike]
+
+    res = [closest_call_option, closest_put_option]
+    
+    return res
+
+print(find_long_straddle("AAPL", 190, 6, 100))
+
+
+def find_long_strangle():
+    pass
 
 
 def liquidity_check(symbol, option_type):
@@ -109,13 +150,13 @@ def worth_or_not(symbol, strike_price, implied_vol, expiry_date, call_or_put):
         results['Theta'] = option.theta()
         results['Vega'] = option.vega()
         results['Rho'] = option.rho()
+        results['Option Price'] = option.NPV()
         return results   
 
     greeks = greeks_check(option)
     
-    for greek,value in greeks.items():
-        print(f"{greek}: {value}")
+    return greeks
 
 
-worth_or_not("AAPL", try_out['strike'], try_out['impliedVolatility'], "123", "call")
+print(worth_or_not("AAPL", try_out['strike'], try_out['impliedVolatility'], "123", "call"))
 
