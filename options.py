@@ -3,17 +3,39 @@ from py_vollib.black_scholes import black_scholes
 from py_vollib.black_scholes import implied_volatility
 import yfinance as yf
 import pandas as pd
+from datetime import datetime, timedelta
+import pytz
+import requests
 
+
+## Long call, Long Put, Long Straddle, Long Strangle
+## Have something to indicate earnings season
+
+
+# We need to come up with something that determine the number of days to expiry (Need to be fixed)
+# Need to also have something that sees what our max_price would be (max_price refers to the price of CONTRACT)
+# Take note, last price would need to x100
+# For predicted_price, we would probably need to hike it up abit cause if too close to our strike, very expensive (unless expiry low BUT like that v risky)
 
 def find_option_contract(symbol, predicted_price, expiry_days, max_price, option_type):
+    us_timezone = pytz.timezone('America/New_York')
+    us_time =  datetime.now(us_timezone)
+    formatted_date = us_time.strftime("%y%m%d")
+    days_to_add = expiry_days
+    expiry_date = us_time + timedelta(days=days_to_add)
+    print(formatted_date)
+    print(expiry_date.strftime("%y%m%d"))
+
     # Fetch option chain
     option_chain = yf.Ticker(symbol).option_chain()
 
+    available_option_dates = yf.Ticker(symbol).options
+  
     # Filter option chain based on expiry date, option type, and maximum price
     options = option_chain.calls if option_type == 'call' else option_chain.puts
-
-    #options = options[options['expirationDate'] == expiry_days]
+    
     options = options[options['lastPrice'] <= max_price]
+    options = options[options['contractSymbol'].str.contains(expiry_date.strftime("%y%m%d"))]
 
     # Find the closest match for the strike price
     closest_strike = options['strike'].iloc[(options['strike'] - predicted_price).abs().idxmin()]
@@ -23,77 +45,77 @@ def find_option_contract(symbol, predicted_price, expiry_days, max_price, option
 
     return closest_option
 
-
-# Example usage
-# symbol = "SPY"
-# predicted_price = 410.0
-# expiry_days = 30
-# max_price = 5.0
-# option_type = 'call'
-
-# closest_option = find_option_contract(symbol, predicted_price, expiry_days, max_price, option_type)
-# print(closest_option)
+try_out = find_option_contract("AAPL", 200, 6, 100, "call")
+print(try_out)
 
 
-def get_risk_free_rate():
+def liquidity_check(symbol, option_type):
+    # We can do one for volume of the stock as well. We should do for higher liquidity stocks
+    bid_ask_threshold = 0.15
+    open_interest_threshold = 100
 
+    option_chain = yf.Ticker(symbol).option_chain()
+    options = option_chain.calls if option_type == "call" else option_chain.puts
+    oi = options['openInterest'].mean()
+    spread = (options['ask']-options['bid']).mean()
+    return spread <= bid_ask_threshold and oi >= open_interest_threshold
+
+print(liquidity_check("AAPL", "call"))
+
+
+
+def worth_or_not(symbol, strike_price, implied_vol, expiry_date, call_or_put):
+    spot_price = yf.Ticker(symbol).history().iloc[-1]['Close']
+
+    ticker_symbol = "^TNX"  # Replace with the desired Treasury yield ticker symbol - this is 10 year
+    treasury_yield = yf.Ticker(ticker_symbol)
+    risk_free_rate = treasury_yield.history().iloc[-1]['Close'] / 100
+
+    dividend_rate = 0.0
+    #########
+    expiration_date = ql.Date(21,7,2023)
+    earliest_date = ql.Date(15,7,2023)
+
+    day_count = ql.Actual365Fixed()
     calendar = ql.NullCalendar()
-    today = ql.Date().todaysDate()
-    settlement_date = ql.TARGET().advance(today, 2, ql.Days)
-    tenor = ql.Period(1, ql.Years)
-    rate_helpers = [ql.DepositRateHelper(ql.QuoteHandle(ql.SimpleQuote(0.0)), tenor, 0, calendar,
-                                         ql.ModifiedFollowing, False, ql.Actual360())]
-    yield_curve = ql.PiecewiseLogCubicDiscount(settlement_date, rate_helpers, ql.Actual365Fixed())
-    yield_curve.enableExtrapolation()
-    risk_free_rate = yield_curve.zeroRate(tenor, ql.Compounded, ql.Annual).rate()
+    option_type = ql.Option.Call if call_or_put == "call" else ql.Option.Put
+    exercise_type = ql.AmericanExercise(ql.Date(), expiration_date)
 
-    return risk_free_rate
+    payoff = ql.PlainVanillaPayoff(option_type, int(strike_price))
+    #exercise = ql.AmericanExercise(exercise_type)
+    option = ql.VanillaOption(payoff, exercise_type)
 
-def get_volatility(option_type, underlying_price, strike_price, option_price, risk_free_rate):
-
-    py_vollib_volatility = implied_volatility(option_price, underlying_price, strike_price, risk_free_rate, 30, option_type.lower())
-    return py_vollib_volatility
-
-def calculate_option_price(option_type, underlying_price, strike_price, expiration_date, dividend_yield):
-
-    today = ql.Date().todaysDate()
-    ql.Settings.instance().evaluationDate = today
-
-    ql_option_type = ql.Option.Put if option_type == 'put' else ql.Option.Call
-    payoff = ql.PlainVanillaPayoff(ql_option_type, strike_price)
-    exercise = ql.AmericanExercise(today, expiration_date)
-    ql_option = ql.VanillaOption(payoff, exercise)
-
-
-    risk_free_rate = get_risk_free_rate()
-    spot_handle = ql.QuoteHandle(ql.SimpleQuote(underlying_price))
-    flat_ts = ql.YieldTermStructureHandle(ql.FlatForward(today, risk_free_rate, ql.Actual365Fixed()))
-    dividend_ts = ql.YieldTermStructureHandle(ql.FlatForward(today, dividend_yield, ql.Actual365Fixed()))
-
+    spot_handle = ql.QuoteHandle(ql.SimpleQuote(float(spot_price)))
+    vol_handle = ql.BlackVolTermStructureHandle(ql.BlackConstantVol(ql.Date(), ql.NullCalendar(), float(implied_vol), day_count))
     
-    implied_vol = get_volatility(option_type, underlying_price, strike_price, option_price, risk_free_rate)
+    risk_free_curve = ql.YieldTermStructureHandle(
+        ql.FlatForward(0, calendar, risk_free_rate, day_count)
+    )
 
-    vol_ts = ql.BlackConstantVol(today, ql.NullCalendar(), implied_vol, ql.Actual365Fixed())
-    process = ql.BlackScholesMertonProcess(spot_handle, dividend_ts, flat_ts, vol_ts)
-    engine = ql.BaroneAdesiWhaleyEngine(process)
-    ql_option.setPricingEngine(engine)
-    option_price = ql_option.NPV()
+    # Dividend Yield Term Structure
+    dividend_yield = ql.YieldTermStructureHandle(
+        ql.FlatForward(0, calendar, dividend_rate, day_count)
+    )
+    
+    process = ql.BlackScholesMertonProcess(spot_handle, dividend_yield, risk_free_curve, vol_handle)
+    engine = ql.BaroneAdesiWhaleyApproximationEngine(process)
 
-    return option_price
+    option.setPricingEngine(engine)
+
+    def greeks_check(option):
+        results = dict()
+        results['Delta'] = option.delta()
+        results['Gamma'] = option.gamma()
+        results['Theta'] = option.theta()
+        results['Vega'] = option.vega()
+        results['Rho'] = option.rho()
+        return results   
+
+    greeks = greeks_check(option)
+    
+    for greek,value in greeks.items():
+        print(f"{greek}: {value}")
 
 
-# # Example usage
-# option_type = 'put'  
-# underlying_price = 300 
-# strike_price = 290  
-# expiration_date = ql.Date(31, 12, 2023)  # Option expiration date
-# dividend_yield = 0.0  # Dividend yield of the underlying asset
-# option_price = 15.0  # Market price of the option
-# risk_free_rate = get_risk_free_rate()
-# implied_volatility = get_volatility(option_type, underlying_price, strike_price, option_price, risk_free_rate)
+worth_or_not("AAPL", try_out['strike'], try_out['impliedVolatility'], "123", "call")
 
-
-
-#######################################################################################################################
-# We first use the calculate_option_price to compare the market price to the theoretical price of the option contract
-# then we need to predict the underlying stock price -> then we can use the calculate_option_price again to see what the potential profits are
