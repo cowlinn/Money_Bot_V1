@@ -8,19 +8,21 @@ import spreadsheet_bot as ssb
 import random
 import os
 import yfinance as yf
+from money_bot_env_reader import get_env
 # from flask import Flask, request
 
 def get_token():
-    auth = json.loads(open('Auth/accountant_auth.txt', 'r').read())
-    token = auth["TOKEN"]
+    # auth = json.loads(open('Auth/accountant_auth.txt', 'r').read())
+    auth = get_env(env_file='money_bot.env')
+    token = auth["ACCOUNTANT_BOT_TELE_TOKEN"]
     return token
 
-def send_tele_message(message, chat_name = 'money_bot_trades', auth = json.loads(open('Auth/accountant_auth.txt', 'r').read())):
-    TOKEN = auth["TOKEN"]
+def send_tele_message(message, chat_name = 'money_bot_trades', auth = get_env(env_file='money_bot.env')):
+    TOKEN = auth["ACCOUNTANT_BOT_TELE_TOKEN"]
     if chat_name == 'money_bot_trades':
-        chat_id = auth["bot_chat_id"]
+        chat_id = auth["MONEY_BOT_TRADES_CHAT_ID"]
     elif chat_name == 'money_bot':
-        chat_id = auth["main_chat_id"]
+        chat_id = auth["MAIN_TELE_CHAT_ID"]
     else:
         print('No valid chat_name specified.')
         return
