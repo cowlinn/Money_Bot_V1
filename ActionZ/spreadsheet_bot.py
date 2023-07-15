@@ -171,7 +171,7 @@ def print_access_denied_error_msg(file_name):
 # will return a string 'Access Denied' if could not access
 def connect_to_file(file_name):
     # tfile = _google_creds_as_file().name
-    gc = pygsheets.authorize(service_file='test.json')
+    gc = pygsheets.authorize(service_file='Auth/spreadsheet-bot-390911-5cbd486c0cb1.json')
     # gc = pygsheets.authorize(service_account_env_var='GDRIVE_API_CREDENTIALS')
     try:
         sh = gc.open(file_name) # remember to change this if you change the name
