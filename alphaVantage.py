@@ -99,6 +99,9 @@ def intraday(ticker,key):
 
 ############################################## Pulling Alpha Vantage Data (Fundamental) ######################################################################
 
+#Company overview, Income statement, 
+
+
 def balance_sheet(ticker,key):
     url = f"https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol={ticker}&apikey={key}&datatype=csv"
     r = requests.get(url)
@@ -187,7 +190,18 @@ def earnings_date(ticker,key):
 
 ############################################## Pulling Alpha Vantage Data (Economic Indicators) ######################################################################
 
+## Global Commoditiies index?
+## Real GDP, Real GDP Per capita, Treasury yield, Federal Funds Rate, CPI, Inflation, Retail Sales, Durable Goods Orders, 
+## Machine learning here?
+## Webscrape quiver quant
 
+## Finn hub
+## Insider transactions, insider sentiment, social sentiment
+
+def news_and_sentiment(ticker,key):
+    url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
 
 
 ############################################## Pulling Alpha Vantage Data (Technical Indicators) ######################################################################
