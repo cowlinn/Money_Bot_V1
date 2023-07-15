@@ -56,7 +56,7 @@ def helper_list_print(message, lst):
 ##TODO: check what the format of this looks like, and sell stuff that we should
 
 
-def check_prev_positions(my_ib):
+def check_prev_positions(my_ib:IB, day_actions:dict):
     prev_positions = my_ib.positions() #a list of positions we are holdin
     open_trades = my_ib.openTrades() #this shld be all closed?
 
@@ -73,6 +73,21 @@ def check_prev_positions(my_ib):
 
         ##DO SOMETHING
         pass
+
+    
+    msg = ""
+    for trade in day_actions:
+        trade_msg = f"currently looking at the history for {trade} \n"
+
+        ##we assume at this point, log_entry[trade_key] = Trade object
+        for log_entry in day_actions[trade].log:
+            trade_msg += f"{log_entry} \n"
+        
+
+        trade_msg += "history of {trade} completed \n"
+
+        msg += trade_msg
+    send_tele_message(msg)
 
 
 
@@ -110,7 +125,7 @@ def get_liquid_funds(my_ib):
     return float(liquid_funds.value)
 
 
-def make_trade(trade_dict, action, ticker, my_ib):
+def make_trade(trade_dict, action, ticker, my_ib: IB, trade_actions:dict):
     if not trade_dict:
         return 
     for date in trade_dict:
@@ -140,20 +155,22 @@ def make_trade(trade_dict, action, ticker, my_ib):
                         my_ib.waitOnUpdate()
                     is_parent_trade = False #only wait for the parent to go in 
 
-            #trade = ib.placeOrder(contract, bracket_order)
-            #my_ib.sleep(25)  # Sleep for a moment to allow trade executio
-            # Check the order status of the most recent one?
-            order_status = my_ib.trades()[-1].orderStatus 
+                #trade = ib.placeOrder(contract, bracket_order)
+                #my_ib.sleep(25)  # Sleep for a moment to allow trade executio
+                # Check the order status of the most recent one? (including parents?)
+                order_status = my_ib.trades()[-1].orderStatus 
+                print(f"Order status: {order_status.status} for {ticker} with action {action}")
+                send_tele_message(f"Order status: {order_status.status} for {ticker} with action {action}")
+
+                trade_key = ticker + " " + str(datetime.now)
+                
+                ##register the current order object inside the dictionary
+                trade_actions[trade_key] = trade
 
 
-            ##HERE: send a tele message xd 
-            print(f"Order status: {order_status.status} for {ticker} with action {action}")
-            send_tele_message(f"Order status: {order_status.status} for {ticker} with action {action}")
 
 
-
-
-def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
+def run_trades(my_ib, day_actions:dict, current_stocks= ['SPY', 'TSLA'] ):
     for ticker_name in current_stocks:
         print(f"checking to see if there are good trades for {ticker_name}")
         send_tele_message(f"checking to see if there are good trades for {ticker_name}")
@@ -166,8 +183,8 @@ def run_trades(my_ib, current_stocks= ['SPY', 'TSLA']):
         #this "trade" key is a datetime obj
         call_dict, put_dict = decision
 
-        make_trade(call_dict, 'BUY', ticker_name, my_ib)
-        make_trade(put_dict, 'SELL', ticker_name, my_ib)
+        make_trade(call_dict, 'BUY', ticker_name, my_ib, day_actions)
+        make_trade(put_dict, 'SELL', ticker_name, my_ib, day_actions)
 
 
 def create_contract(ticker_name):
