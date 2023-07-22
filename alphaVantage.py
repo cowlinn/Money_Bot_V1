@@ -14,6 +14,7 @@ import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 from ibapi.contract import Contract
+import finnhub
 
 auth = json.loads(open('Auth/authDS.txt', 'r').read())
 
@@ -64,6 +65,8 @@ apiKey13 = 'YPB0AWLC04BSYLCA'
 apiKey14 = 'IIDIQCUR0VQHF2K9'
 apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey10,apiKey11,apiKey12,apiKey13,apiKey14]
 
+##### Finnhub API Keys ######
+finnhub_client = finnhub.Client(api_key="")
 
 ############################################## Telegram Bot - @monymoney_bot ######################################################################
 def send_tele_message(message):
@@ -98,6 +101,11 @@ def intraday(ticker,key):
 
 
 ############################################## Pulling Alpha Vantage Data (Fundamental) ######################################################################
+
+#Company overview, Income statement
+## Machine learning here? (Economic data)
+## Webscrape quiver quant
+
 
 def balance_sheet(ticker,key):
     url = f"https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol={ticker}&apikey={key}&datatype=csv"
@@ -188,6 +196,56 @@ def earnings_date(ticker,key):
 ############################################## Pulling Alpha Vantage Data (Economic Indicators) ######################################################################
 
 
+def insider_transac(ticker):
+    print(finnhub_client.stock_insider_transactions(ticker, '2021-01-01', '2021-03-01'))
+
+def insider_sentiment(ticker):
+    print(finnhub_client.stock_insider_sentiment(ticker, '2021-01-01', '2022-03-01'))
+
+def social_sentiment(ticker):
+    print(finnhub_client.stock_social_sentiment(ticker))
+
+def real_gdp(key):
+    url = f'https://www.alphavantage.co/query?function=REAL_GDP&interval=annual&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
+
+
+def real_gdp_per_capita(key):
+    url = f'https://www.alphavantage.co/query?function=REAL_GDP_PER_CAPITA&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
+
+
+def treasury_yield(key):
+    url = f'https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=10year&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
+
+def interest_rate(key):
+    url = f'https://www.alphavantage.co/query?function=FEDERAL_FUNDS_RATE&interval=monthly&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
+
+def cpi(key):
+    url = f'https://www.alphavantage.co/query?function=CPI&interval=monthly&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
+
+def inflation(key):
+    url = f'https://www.alphavantage.co/query?function=INFLATION&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
+
+def global_commodities_index(key):
+    url = f'https://www.alphavantage.co/query?function=ALL_COMMODITIES&interval=monthly&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
+
+def news_and_sentiment(ticker,key):
+    url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&apikey={key}'
+    r = requests.get(url)
+    data = r.json()
 
 
 ############################################## Pulling Alpha Vantage Data (Technical Indicators) ######################################################################
