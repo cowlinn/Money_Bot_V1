@@ -1,3 +1,5 @@
 
 *.pyc
 Trade-action-logs/2023-06-09_SPY_call-logs.txt
+*.txt
+*.env

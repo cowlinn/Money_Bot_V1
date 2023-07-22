@@ -2,8 +2,8 @@ import pandas as pd
 import datetime
 from datetime import datetime as dt
 from pytz import timezone
-import threading
 import time
+#import alpaca_trade_api as alpaca
 import json
 import smtplib
 from datetime import timedelta
@@ -13,40 +13,19 @@ import csv
 import ibapi
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
-from ibapi.contract import Contract
-import finnhub
+from money_bot_env_reader import get_env
+# auth = json.loads(open('Auth/grp_auth.txt', 'r').read())
+# current money_bot trades chat id is -1001987988217
 
-auth = json.loads(open('Auth/authDS.txt', 'r').read())
+# class IBapi(EWrapper, EClient):
+#      def __init__(self):
+#          EClient.__init__(self, self) 
 
-class IBapi(EWrapper, EClient):
-     def __init__(self):
-         EClient.__init__(self, self) 
-         
+# app = IBapi()
+# app.connect('127.0.0.1', 7497, 123)
+# app.run()
 
-app = IBapi()
-app.connect('127.0.0.1', 7497, 123)
 
-def run_loop():
-	app.run()
-
-api_thread = threading.Thread(target=run_loop, daemon=True)
-api_thread.start()
-time.sleep(1)
-apple_contract = Contract()
-apple_contract.symbol = 'AAPL'
-apple_contract.secType = 'STK'
-apple_contract.exchange = 'SMART'
-apple_contract.currency = 'USD'
-
-#Request Market Data
-#app.reqMktData(1, apple_contract, '', False, False, [])
-
-#time.sleep(10) #Sleep interval to allow time for incoming price data
-app.disconnect()
-from ibapi.ticktype import TickTypeEnum
-
-for i in range(91):
-	print(TickTypeEnum.to_str(i), i)
 
 ##### Alpha Vantage API Keys ######
 apiKey = "YU2WS3DFRZNOBW2Q"
@@ -65,14 +44,12 @@ apiKey13 = 'YPB0AWLC04BSYLCA'
 apiKey14 = 'IIDIQCUR0VQHF2K9'
 apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey10,apiKey11,apiKey12,apiKey13,apiKey14]
 
-##### Finnhub API Keys ######
-finnhub_client = finnhub.Client(api_key="")
-
 ############################################## Telegram Bot - @monymoney_bot ######################################################################
 def send_tele_message(message):
-    TOKEN = auth["TOKEN"]
-    chat_id = auth["chat_id"]
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
+    auth = get_env(env_file='money_bot.env')
+    TOKEN = auth["MONEY_BOT_TELE_TOKEN"]
+    chat_id = auth["MONEY_BOT_TRADES_CHAT_ID"]
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}&disable_notification=true"
     requests.get(url).json()
 
 
@@ -101,11 +78,6 @@ def intraday(ticker,key):
 
 
 ############################################## Pulling Alpha Vantage Data (Fundamental) ######################################################################
-
-#Company overview, Income statement
-## Machine learning here? (Economic data)
-## Webscrape quiver quant
-
 
 def balance_sheet(ticker,key):
     url = f"https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol={ticker}&apikey={key}&datatype=csv"
@@ -196,56 +168,6 @@ def earnings_date(ticker,key):
 ############################################## Pulling Alpha Vantage Data (Economic Indicators) ######################################################################
 
 
-def insider_transac(ticker):
-    print(finnhub_client.stock_insider_transactions(ticker, '2021-01-01', '2021-03-01'))
-
-def insider_sentiment(ticker):
-    print(finnhub_client.stock_insider_sentiment(ticker, '2021-01-01', '2022-03-01'))
-
-def social_sentiment(ticker):
-    print(finnhub_client.stock_social_sentiment(ticker))
-
-def real_gdp(key):
-    url = f'https://www.alphavantage.co/query?function=REAL_GDP&interval=annual&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
-
-def real_gdp_per_capita(key):
-    url = f'https://www.alphavantage.co/query?function=REAL_GDP_PER_CAPITA&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
-
-def treasury_yield(key):
-    url = f'https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=10year&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
-def interest_rate(key):
-    url = f'https://www.alphavantage.co/query?function=FEDERAL_FUNDS_RATE&interval=monthly&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
-def cpi(key):
-    url = f'https://www.alphavantage.co/query?function=CPI&interval=monthly&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
-def inflation(key):
-    url = f'https://www.alphavantage.co/query?function=INFLATION&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
-def global_commodities_index(key):
-    url = f'https://www.alphavantage.co/query?function=ALL_COMMODITIES&interval=monthly&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
-def news_and_sentiment(ticker,key):
-    url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
 
 
 ############################################## Pulling Alpha Vantage Data (Technical Indicators) ######################################################################
@@ -383,4 +305,6 @@ def wma(ticker,key):
     df = df.reset_index()
     df = df.rename(columns={'index':'Date'})
     return df
-# send_tele_message("test")
+
+
+
