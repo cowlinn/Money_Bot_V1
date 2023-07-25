@@ -46,8 +46,8 @@ def find_option_contract(symbol, predicted_price, expiry_days, max_price, option
 
     return closest_option
 
-try_out = find_option_contract("AAPL", 200, 6, 100, "call")
-print(try_out)
+#try_out = find_option_contract("AAPL", 200, 6, 100, "call")
+#print(try_out)
 
 def find_long_straddle(symbol, curr_price, expiry_days, max_price):
     us_timezone = pytz.timezone('America/New_York')
@@ -83,7 +83,7 @@ def find_long_straddle(symbol, curr_price, expiry_days, max_price):
     
     return res
 
-print(find_long_straddle("AAPL", 190, 6, 100))
+#print(find_long_straddle("AAPL", 190, 6, 100))
 
 
 def find_long_strangle():
@@ -101,7 +101,7 @@ def liquidity_check(symbol, option_type):
     spread = (options['ask']-options['bid']).mean()
     return spread <= bid_ask_threshold and oi >= open_interest_threshold
 
-print(liquidity_check("AAPL", "call"))
+#print(liquidity_check("AAPL", "call"))
 
 
 
@@ -158,5 +158,5 @@ def worth_or_not(symbol, strike_price, implied_vol, expiry_date, call_or_put):
     return greeks
 
 
-print(worth_or_not("AAPL", try_out['strike'], try_out['impliedVolatility'], "123", "call"))
+#print(worth_or_not("AAPL", try_out['strike'], try_out['impliedVolatility'], "123", "call"))
 

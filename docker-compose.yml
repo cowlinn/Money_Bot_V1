@@ -1,0 +1,26 @@
+---
+services:
+  ibkr:
+    image: ghcr.io/extrange/ibkr # latest, stable, 10.21, 10.21.1p etc
+    ports:
+      - "127.0.0.1:6080:6080" # noVNC browser access
+      - "127.0.0.1:8888:8888" # API access
+    ulimits:
+      nofile: 10000 # See FAQ
+    environment:
+      USERNAME: ${USERNAME}
+      PASSWORD: ${PASSWORD}
+      GATEWAY_OR_TWS: gateway
+      IBC_TradingMode: paper
+      # TWOFA_TIMEOUT_ACTION: restart
+      #
+      # Variables prefixed with IBC_ override IBCAlpha`s config.ini:
+      # IBC_ReadOnlyApi: yes
+      # ...
+      # See below for more details
+  bot:
+    build: .
+    environment:
+      placeholder: thing
+    depends_on:
+      - ibkr
