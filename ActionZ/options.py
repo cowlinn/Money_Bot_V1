@@ -6,6 +6,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 import requests
+from binomial_options_pricing import american_fast_tree, optimize_upFactor
+
 
 
 ## Long call, Long Put, Long Straddle, Long Strangle 
@@ -127,6 +129,8 @@ def liquidity_check(symbol, option_type, expiry_days):
 # devax(?) all values are 0 eh
 # cannot ebe option price also 0 right?
 def worth_or_not(symbol, strike_price, implied_vol, expiry_days, call_or_put):
+    if not isinstance(strike_price, int):
+        strike_price = int(strike_price.iloc[0])
     spot_price = yf.Ticker(symbol).history(period = '1d', interval = '1m').iloc[-1]['Close']
 
     ticker_symbol = "^TNX"  # Replace with the desired Treasury yield ticker symbol - this is 10 year
@@ -143,19 +147,12 @@ def worth_or_not(symbol, strike_price, implied_vol, expiry_days, call_or_put):
     expiration_date = ql.Date(day,month,year)
     # earliest_date = ql.Date(15,7,2023)
     
-    todaysDate = get_expiry_date(0)
-    todaysDate_string = str(todaysDate).split()[0]
-    year = int(todaysDate_string[:4])
-    month = int(todaysDate_string[5:7])
-    day = int(todaysDate_string[8:])
-    todaysDate = ql.Date(day,month,year)
-    
     day_count = ql.Actual365Fixed()
     calendar = ql.NullCalendar()
     option_type = ql.Option.Call if call_or_put == "call" else ql.Option.Put
     exercise_type = ql.AmericanExercise(ql.Date(), expiration_date)
 
-    payoff = ql.PlainVanillaPayoff(option_type, int(strike_price.iloc[0]))
+    payoff = ql.PlainVanillaPayoff(option_type, strike_price)
     #exercise = ql.AmericanExercise(exercise_type)
     option = ql.VanillaOption(payoff, exercise_type)
 
@@ -183,12 +180,22 @@ def worth_or_not(symbol, strike_price, implied_vol, expiry_days, call_or_put):
         results['Theta'] = option.theta()
         results['Vega'] = option.vega()
         results['Rho'] = option.rho()
-        results['Option Price'] = option.NPV()
+        # results['Option Price'] = option.NPV()
+        optimal_u = optimize_upFactor(symbol = symbol, expiry_days=expiry_days, option_type=call_or_put)
+        results['Option Price'] = american_fast_tree(strike_price,expiry_days/365,float(spot_price),risk_free_rate,3, optimal_u, 1/optimal_u, opttype=call_or_put)
+        return results   
+    # for some reason greeks_check() only work's for calls
+    try:
+        greeks = greeks_check(option)
+        
+        return greeks
+    except:
+        print("DEVAX you probably tried using a put option. Anyway, here's the option pricing using binomial model:")
+        results = {}
+        optimal_u = optimize_upFactor(symbol = symbol, expiry_days=expiry_days, option_type=call_or_put)
+        results['Option Price'] = american_fast_tree(strike_price,expiry_days/365,float(spot_price),risk_free_rate,3, optimal_u, 1/optimal_u, opttype=call_or_put)
         return results   
 
-    greeks = greeks_check(option)
-    
-    return greeks
 
 def get_expiry_date(expiry_days):
     us_timezone = pytz.timezone('America/New_York')
@@ -196,6 +203,6 @@ def get_expiry_date(expiry_days):
     days_to_add = expiry_days
     expiry_date = us_time + timedelta(days=days_to_add)
     return expiry_date
-
-#print(worth_or_not("SPY", try_out['strike'], try_out['impliedVolatility'], 7, "call"))
+try_out = find_option_contract("SPY", 459, 7, 50, "put")
+print(worth_or_not("SPY", try_out['strike'], try_out['impliedVolatility'], 7, "put"))
 
