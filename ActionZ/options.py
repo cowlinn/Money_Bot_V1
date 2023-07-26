@@ -203,6 +203,6 @@ def get_expiry_date(expiry_days):
     days_to_add = expiry_days
     expiry_date = us_time + timedelta(days=days_to_add)
     return expiry_date
-try_out = find_option_contract("SPY", 459, 7, 50, "put")
-print(worth_or_not("SPY", try_out['strike'], try_out['impliedVolatility'], 7, "put"))
+# try_out = find_option_contract("SPY", 459, 7, 50, "call")
+# print(worth_or_not("SPY", try_out['strike'], try_out['impliedVolatility'], 7, "call"))
 
