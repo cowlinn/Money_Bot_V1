@@ -127,7 +127,7 @@ def liquidity_check(symbol, option_type, expiry_days):
 # devax(?) all values are 0 eh
 # cannot ebe option price also 0 right?
 def worth_or_not(symbol, strike_price, implied_vol, expiry_days, call_or_put):
-    spot_price = yf.Ticker(symbol).history().iloc[-1]['Close']
+    spot_price = yf.Ticker(symbol).history(period = '1d', interval = '1m').iloc[-1]['Close']
 
     ticker_symbol = "^TNX"  # Replace with the desired Treasury yield ticker symbol - this is 10 year
     treasury_yield = yf.Ticker(ticker_symbol)
@@ -142,7 +142,14 @@ def worth_or_not(symbol, strike_price, implied_vol, expiry_days, call_or_put):
     day = int(expiry_date_string[8:])
     expiration_date = ql.Date(day,month,year)
     # earliest_date = ql.Date(15,7,2023)
-
+    
+    todaysDate = get_expiry_date(0)
+    todaysDate_string = str(todaysDate).split()[0]
+    year = int(todaysDate_string[:4])
+    month = int(todaysDate_string[5:7])
+    day = int(todaysDate_string[8:])
+    todaysDate = ql.Date(day,month,year)
+    
     day_count = ql.Actual365Fixed()
     calendar = ql.NullCalendar()
     option_type = ql.Option.Call if call_or_put == "call" else ql.Option.Put
