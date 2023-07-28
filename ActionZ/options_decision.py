@@ -46,9 +46,3 @@ def options_decision(symbol, scamcheck = True, undervaluecheck = False, date = '
     
     # return wanted_option['contractSymbol'].iloc[0]
     return return_tuple
-
-
-test = options.find_option_contract('SPY', 450, 7, max_price=50, option_type='call')
-strike = int(test['strike'].iloc[0])
-return_tuple = ('SPY', '20'+options.get_expiry_date(7).strftime("%y%m%d"), int(test['strike'].iloc[0]), 'C', 'SMART')
-
