@@ -8,7 +8,7 @@ def undervalued(actual_price, theoretical_price):
 def scam(actual_price, theoretical_price, threshold = -1):
     return (theoretical_price-actual_price) < threshold
 
-def options_decision(symbol, scamcheck = True, undervaluecheck = False, date = 'normal options date'):
+def options_decision(symbol, scamcheck = True, scam_threshold = -1.2, undervaluecheck = False, date = 'normal options date'):
     options_info = get_1wk_dte_option_details(symbol)
     expiry_days = 7
     formatted_expiry_date = options.get_expiry_date(expiry_days).strftime("%y%m%d")
@@ -33,9 +33,10 @@ def options_decision(symbol, scamcheck = True, undervaluecheck = False, date = '
         print('Watch out! this option might be a scam!')
         return None
     if not options.liquidity_check(symbol, option_type, expiry_days): # always check liquidity to avoid losing to bid-ask spread
+        print('Not enough liquidity!')
         return None
     if undervaluecheck:
-        if undervalued(actual_price, theoretical_price):
+        if undervalued(actual_price, theoretical_price, threshold = scam_threshold):
             print('This option is probably a good buy!')
             # return wanted_option['contractSymbol'].iloc[0]
             return return_tuple
