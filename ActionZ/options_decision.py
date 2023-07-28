@@ -8,29 +8,47 @@ def undervalued(actual_price, theoretical_price):
 def scam(actual_price, theoretical_price, threshold = -1):
     return (theoretical_price-actual_price) < threshold
 
-def options_decision(symbol, scamcheck = True, undervaluecheck = False):
+def options_decision(symbol, scamcheck = True, undervaluecheck = False, date = 'normal options date'):
     options_info = get_1wk_dte_option_details(symbol)
     expiry_days = 7
+    formatted_expiry_date = options.get_expiry_date(expiry_days).strftime("%y%m%d")
+    if date == 'menal ibkr date':
+        formatted_expiry_date = '20'+formatted_expiry_date
     if options_info is None:
         print('No good trades for now, try again later!')
         return None
     option_type, strike_price = options_info
+    if option_type == 'call':
+        otype = 'C'
+    else:
+        otype = 'P'
     wanted_option = options.find_option_contract(symbol, strike_price, expiry_days, max_price=50, option_type=option_type)
     theoretical_price = options.worth_or_not(symbol, wanted_option['strike'], wanted_option['impliedVolatility'], expiry_days, option_type)['Option Price']
     actual_price = wanted_option['lastprice'].iloc[0]
+    return_tuple = (symbol, formatted_expiry_date, int(wanted_option['strike'].iloc[0]), otype, 'SMART')
+
     # option 1: determine if the option is 'undervalued' by the market
     # option 2: just don't get scamemd, simply check if the pricing of the option is close enough
     if scamcheck and scam(actual_price, theoretical_price):
         print('Watch out! this option might be a scam!')
         return None
-    
+    if not options.liquidity_check(symbol, option_type, expiry_days): # always check liquidity to avoid losing to bid-ask spread
+        return None
     if undervaluecheck:
         if undervalued(actual_price, theoretical_price):
             print('This option is probably a good buy!')
-            return wanted_option['contractSymbol'].iloc[0]
+            # return wanted_option['contractSymbol'].iloc[0]
+            return return_tuple
         
         elif not undervalued(actual_price, theoretical_price):
             print('This option is relatively expensive, try a different one!')
             return None
     
-    return wanted_option['contractSymbol'].iloc[0]
+    # return wanted_option['contractSymbol'].iloc[0]
+    return return_tuple
+
+
+test = options.find_option_contract('SPY', 450, 7, max_price=50, option_type='call')
+strike = int(test['strike'].iloc[0])
+return_tuple = ('SPY', '20'+options.get_expiry_date(7).strftime("%y%m%d"), int(test['strike'].iloc[0]), 'C', 'SMART')
+
