@@ -1,5 +1,7 @@
-from actions import *
-from weights_optimisation import *
+import time
+from actions import run_optimization, connection_setup, connection_teardown, req_prev_data, check_prev_positions
+from options_actions import * 
+#from weights_optimisation import run_options_trades
 from ib_insync import * 
 import pickle 
 
@@ -22,18 +24,18 @@ current_stocks_to_monitor =  ['TSLA', 'NVDA', 'MA', 'PYPL', 'GME',
                                 'RIOT', 'GILD', 'BABA', 'META',
                                'FSLR', 'ORCL', 'PEP', 'MCD', 'ABT', 'SBUX']
 
-current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
+#current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
 
 day_actions = dict()
-current_actions_monitoring = "monitoring_actions.txt"
-if not os.path.isfile(current_actions_monitoring): #first day setup
-    day_actions_file = open(current_actions_monitoring, "wb+")
-    day_actions_file.close()
-else:
-    day_actions_file = open(current_actions_monitoring, "rb") #read file
-    day_actions = pickle.load(day_actions_file)
-    day_actions_file.close()
+# current_actions_monitoring = "monitoring_actions.txt"
+# if not os.path.isfile(current_actions_monitoring): #first day setup
+#     day_actions_file = open(current_actions_monitoring, "wb+")
+#     day_actions_file.close()
+# else:
+#     day_actions_file = open(current_actions_monitoring, "rb") #read file
+#     day_actions = pickle.load(day_actions_file)
+#     day_actions_file.close()
 
 
 
@@ -60,7 +62,7 @@ else:
 ##for the day, that we will query based on
 def once_every_day(my_ib):
     #check_prev_positions(ib)
-    #run_optimization(current_stocks=current_stocks_to_monitor)
+    run_optimization(current_stocks=current_stocks_to_monitor)
 
     ##sample call on TSLA example (the key will be a date)
     #sample_dict = {"key": (263.79  ,  251.12  ,  268.38)}
@@ -70,24 +72,28 @@ def once_every_day(my_ib):
     pass
     
 
-
-## start of day: connect bot
 def start_of_day(my_ib):
+    '''
+    Start of day, we do a connection_setup (connect to tws/ibkr) \n
+    And optimize weights (non-trading hours!)
+    '''
     connection_setup(my_ib)
-    once_every_day(my_ib)
+    #run_optimization(current_stocks=current_stocks_to_monitor)
 
-## end of day: disconnect bot 
-## end all trades
+
 def end_of_day(my_ib):
+    '''
+    At the end of day, we end all trades / disconnect the bot 
+    '''
     connection_teardown(my_ib)
-    day_actions_file = open(current_actions_monitoring, "wb") #need to write bytes to it for binary serialization
-    pickle.dump(day_actions, day_actions_file)
-    day_actions_file.close()
+    # day_actions_file = open(current_actions_monitoring, "wb") #need to write bytes to it for binary serialization
+    # pickle.dump(day_actions, day_actions_file)
+    # day_actions_file.close()
 
 
-#main seq of events
+
 def main(my_ib):
-
+    '''Main Seq of events'''
 
     ##TODO: for the actual options bot, we need to manually check Theta
     ##ad sell our open options based on theta
@@ -95,26 +101,27 @@ def main(my_ib):
 
     ##TODO: we dun have subscription yet / not trading hours 
     ##So we cannot find previous data 
-    prev_data = req_prev_data(my_ib)
+    #prev_data = req_prev_data(my_ib)
 
     #current_stocks_to_monitor = underlyingTA.cleanup(current_stocks_to_monitor)
 
+    ##we run options_trade now 
+    run_option_trades(my_ib, day_actions, current_stocks=current_stocks_to_monitor)
 
-    run_trades(my_ib, day_actions, current_stocks=current_stocks_to_monitor)
-
-
-
-###start of day ##
+############### Main actions ##################
+############### start of day ##################
 
 start_of_day(ib)
 
 #once every 15 minutes, total of 5 hours (20 intervals)
 counter = 0
+
+############### run something every 15min #########
 while counter <= 20:
     main(ib)
     time.sleep(900)
     counter +=1 
 
-###end of day 
+############### end of day ###################
 
 end_of_day(ib)
