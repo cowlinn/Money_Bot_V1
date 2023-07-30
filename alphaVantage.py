@@ -15,38 +15,7 @@ from ibapi.client import EClient
 from ibapi.wrapper import EWrapper  
 from ibapi.contract import Contract
 import finnhub
-
-auth = json.loads(open('Auth/authDS.txt', 'r').read())
-
-class IBapi(EWrapper, EClient):
-     def __init__(self):
-         EClient.__init__(self, self) 
-         
-
-app = IBapi()
-app.connect('127.0.0.1', 7497, 123)
-
-def run_loop():
-	app.run()
-
-api_thread = threading.Thread(target=run_loop, daemon=True)
-api_thread.start()
-time.sleep(1)
-apple_contract = Contract()
-apple_contract.symbol = 'AAPL'
-apple_contract.secType = 'STK'
-apple_contract.exchange = 'SMART'
-apple_contract.currency = 'USD'
-
-#Request Market Data
-#app.reqMktData(1, apple_contract, '', False, False, [])
-
-#time.sleep(10) #Sleep interval to allow time for incoming price data
-app.disconnect()
-from ibapi.ticktype import TickTypeEnum
-
-for i in range(91):
-	print(TickTypeEnum.to_str(i), i)
+import yfinance as yf
 
 ##### Alpha Vantage API Keys ######
 apiKey = "YU2WS3DFRZNOBW2Q"
@@ -66,117 +35,70 @@ apiKey14 = 'IIDIQCUR0VQHF2K9'
 apikeys = [apiKey,apiKey2,apiKey3,apiKey4,apiKey5,apiKey6,apiKey7,apiKey8,apiKey10,apiKey11,apiKey12,apiKey13,apiKey14]
 
 ##### Finnhub API Keys ######
-finnhub_client = finnhub.Client(api_key="")
+finnhub_client = finnhub.Client(api_key="civscj1r01qu45tmlivgcivscj1r01qu45tmlj00")
 
-############################################## Telegram Bot - @monymoney_bot ######################################################################
-def send_tele_message(message):
-    TOKEN = auth["TOKEN"]
-    chat_id = auth["chat_id"]
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
-    requests.get(url).json()
-
-
-############################################## Pulling Alpha Vantage Data (Stock Data) ######################################################################
-def ts_daily_adjusted(ticker,key):
-    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-    df = pd.DataFrame(data["Time Series (Daily)"])
-    df = df.iloc[:, :10]
-    df = df.transpose()
-
-    symbol = [ticker] * 10
-    df.insert(0,'Symbol',symbol)
-    df = df.reset_index()
-    df = df.rename(columns={'index':'Date'})
-    
-    return df
-
-def intraday(ticker,key):
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={ticker}&interval=5min&apikey={key}"
-    r = requests.get(url)
-    data = r.json()
-    print(data)
-
-
-
-############################################## Pulling Alpha Vantage Data (Fundamental) ######################################################################
-
-#Company overview, Income statement
 ## Machine learning here? (Economic data)
 ## Webscrape quiver quant
 
 
-def balance_sheet(ticker,key):
-    url = f"https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol={ticker}&apikey={key}&datatype=csv"
-    r = requests.get(url)
-    data = r.json()
 
-    ### To check for what data they have 
-    #print(data['annualReports'][0])
+############################################## COMPANY USE ###############################################################################################
 
-    df = pd.DataFrame(data["annualReports"], index=[0,1,2,3,4])
-    df = df[['fiscalDateEnding','totalAssets', 'totalCurrentAssets', 'cashAndCashEquivalentsAtCarryingValue', 'cashAndShortTermInvestments', 'inventory', 'currentNetReceivables',
-             'totalNonCurrentAssets', 'totalLiabilities', 'totalCurrentLiabilities', 'currentAccountsPayable', 'currentDebt', 'totalNonCurrentLiabilities',
-             'retainedEarnings','totalShareholderEquity','totalLiabilities']].iloc[:5]
-    #print(df)
-    symbol = [ticker] * 5
-    df.insert(0,'Symbol',symbol)
-    return(df)
+def company_wise(stock_symbol, weeks_back=2, days_to_check=7):
+    # Fetch historical stock price data
+
+    today = datetime.now().date()
+    end_date = today + timedelta(days=days_to_check)
+
+    date = next_earnings_date(stock_symbol, "7E01NY5AWTMML6AR")
+    EARNINGS_CHECK = today <= date <= end_date
+
+    insider_data = insider_sentiment(stock_symbol)
+
+    overview_data = overview(stock_symbol, "YPB0AWLC04BSYLCA")
+
+    stock_data = yf.download(stock_symbol, period='1w')
+    percent_change_1w = ((stock_data['Close'][-1] - stock_data['Close'][0]) / stock_data['Close'][0]) * 100
+    stock_data_2w = yf.download(stock_symbol, period='2w')
+    percent_change_2w = ((stock_data_2w['Close'][-1] - stock_data_2w['Close'][0]) / stock_data_2w['Close'][0]) * 100
+    
+    # Get the fear greed index - IS THIS FOR MARKET OR FOR COMPANY? - USE A LIBRARY
+    fear_greed = fgi.fear_greed_index()
+
+    if percent_change_1w > 2 and percent_change_2w > 5 and fear_greed >= 90:
+        print("Market has been going up alot for the past week and two weeks, and fear greed index is at 100 (Extreme greed). Avoid playing with options this week.")
+        return False
+    else:
+        print("Conditions seem favorable for options trading this week.")
+        return True
     
 
-def cash_flow(ticker,key): 
-    url = f"https://www.alphavantage.co/query?function=CASH_FLOW&symbol={ticker}&apikey={key}"
+def next_earnings_date(ticker,key):
+    url = f"https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&symbol={ticker}&horizon=12month&apikey={key}"
     r = requests.get(url)
-    data = r.json()
+    decoded_content = r.content.decode('utf-8')
+    cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+    my_list = list(cr)[1][2]
+    print(my_list)
 
 
-    ### To check for what data they have 
-    #print(data['annualReports'][0])
+## -100 for negative ot 100 for positive
+def insider_sentiment(ticker):
+
+    current_date = dt.now().date()
+    two_months_ago = current_date - timedelta(days=60)
+
+    start_date_str = two_months_ago.strftime('%Y-%m-%d')
+    end_date_str = current_date.strftime('%Y-%m-%d')
 
 
-    df = pd.DataFrame(data["annualReports"], index=[0,1,2,3,4])
-    df = df[['fiscalDateEnding','operatingCashflow', 'capitalExpenditures', 'changeInReceivables','changeInInventory','profitLoss', 'cashflowFromInvestment', 'cashflowFromFinancing','netIncome']].iloc[:5]
-    #print(df)
-    symbol = [ticker] * 5
-    df.insert(0,'Symbol',symbol)
-    return(df)
+    print(finnhub_client.stock_insider_sentiment(ticker, two_months_ago, current_date))
 
-def earnings(ticker,key): 
-    url = f"https://www.alphavantage.co/query?function=EARNINGS&symbol={ticker}&apikey={key}"
-    r = requests.get(url)
-    data = r.json()
-    df = pd.DataFrame(data["annualEarnings"], index=[0,1,2,3,4,5,6,7,8,9,10,11,12]).iloc[:5]
-    # print(df)
-    symbol = [ticker] * 5
-    df.insert(0,'Symbol',symbol)
-    return(df)
-    
-
-def income_statement(ticker,key): 
-    url = f"https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={ticker}&apikey={key}"
-    r = requests.get(url)
-    data = r.json()
-    
-    ### To check for what data they have 
-    #print(data['annualReports'][0])
-
-
-    df = pd.DataFrame(data["annualReports"], index=[0,1,2,3,4])
-    df = df[['fiscalDateEnding','grossProfit','totalRevenue','costOfRevenue','ebit','ebitda']].iloc[:5]
-    #print(df)
-    symbol = [ticker] * 5
-    df.insert(0,'Symbol',symbol)
-    return(df)
 
 def overview(ticker,key): 
     url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={ticker}&apikey={key}"
     r = requests.get(url)
     data = r.json()
-
-    
-    ### To check for what data they have 
-    #print(data)
 
     df = pd.DataFrame(data, index=[0])
     df = df[['Symbol','Description', 'CIK','MarketCapitalization', 'EBITDA','PERatio', 'PEGRatio','BookValue','DividendYield','TrailingPE','ForwardPE',
@@ -184,32 +106,29 @@ def overview(ticker,key):
     #print(df)
     return(df)
 
-def earnings_date(ticker,key):
-    url = f"https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&symbol={ticker}&horizon=12month&apikey={key}"
-    r = requests.get(url)
-    decoded_content = r.content.decode('utf-8')
-    cr = csv.reader(decoded_content.splitlines(), delimiter=',')
-    my_list = list(cr)
-    print(my_list)
 
+############################################## MARKET USE ##########################################################################################
 
-############################################## Pulling Alpha Vantage Data (Economic Indicators) ######################################################################
+# Consider VIX? 
 
+def market_wise():
 
-def insider_transac(ticker):
-    print(finnhub_client.stock_insider_transactions(ticker, '2021-01-01', '2021-03-01'))
+    # economic_events = {+
+    #     "2023-08-01": "Unemployment Rate Release",
+    #     "2023-08-02": "GDP Growth Report",
+    #     "2023-08-03": "Interest Rate Decision",
+    #     # Add more economic events and their dates here
+    # }
 
-def insider_sentiment(ticker):
-    print(finnhub_client.stock_insider_sentiment(ticker, '2021-01-01', '2022-03-01'))
+    # for event_date, event_name in economic_events.items():
+    #     event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+    #     if today <= event_date <= end_date:
+    #         print(f"Upcoming Economic Event: {event_name} on {event_date}.")
+    #         break
+    # else:
+    #     print("No significant economic events scheduled within the specified time range.")
 
-def social_sentiment(ticker):
-    print(finnhub_client.stock_social_sentiment(ticker))
-
-def real_gdp(key):
-    url = f'https://www.alphavantage.co/query?function=REAL_GDP&interval=annual&apikey={key}'
-    r = requests.get(url)
-    data = r.json()
-
+    pass
 
 def real_gdp_per_capita(key):
     url = f'https://www.alphavantage.co/query?function=REAL_GDP_PER_CAPITA&apikey={key}'
@@ -383,4 +302,3 @@ def wma(ticker,key):
     df = df.reset_index()
     df = df.rename(columns={'index':'Date'})
     return df
-# send_tele_message("test")

@@ -6,13 +6,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 import requests
+import statistics
+from optionprice import Option
 from binomial_options_pricing import american_fast_tree, optimize_upFactor
-
-
-
-## Long call, Long Put, Long Straddle, Long Strangle 
-## Have something to indicate earnings season
-## Have something to indicate whether we are bullihs/bearish/neutral
 
 
 # We need to come up with something that determine the number of days to expiry (Need to be fixed)
@@ -60,51 +56,67 @@ def find_option_contract(symbol, predicted_price, expiry_days, max_price, option
 
     return closest_option
 
-#try_out = find_option_contract("SPY", 430, 7, 50, "call")
-#print(try_out)
-
-def find_long_straddle(symbol, curr_price, expiry_days, max_price):
+def find_long_straddle(symbol, atm_strike, expiry_days, max_call_price, max_put_price):
     expiry_date = get_expiry_date(expiry_days)
     expiry_date_string = str(expiry_date).split()[0]
-
-    # Fetch option chain for wanted expiry date
+    
     try:
         option_chain = yf.Ticker(symbol).option_chain(expiry_date_string)
     except:
         print(f'No options expiring on {expiry_date_string} found for {symbol}! Try another date or a different ticker symbol!')
         return None
 
+    call_options = option_chain.calls
+    put_options = option_chain.puts
 
-    # available_option_dates = yf.Ticker(symbol).options
+    # Filter out call options based on the atm_strike and max_call_price
+    call_options = call_options[(call_options['strike'] == atm_strike) & (call_options['lastPrice'] <= max_call_price)]
     
-    calls = option_chain.calls
-    puts = option_chain.puts
+    # Filter out put options based on the atm_strike and max_put_price
+    put_options = put_options[(put_options['strike'] == atm_strike) & (put_options['lastPrice'] <= max_put_price)]
 
-    calls = calls[calls['lastPrice'] <= max_price]
-    puts = puts[puts['lastPrice'] <= max_price]
+    # Merge call and put options DataFrames
+    long_straddle = pd.merge(call_options, put_options, on='expiration', suffixes=('_call', '_put'))
 
-    # calls = calls[calls['contractSymbol'].str.contains(expiry_date.strftime("%y%m%d"))]
-    # puts = puts[puts['contractSymbol'].str.contains(expiry_date.strftime("%y%m%d"))]
+    return long_straddle
+
+def get_weekly_std_dev(symbol):
+    # Fetch historical stock price data for the past 1 week
+    stock_data = yf.download(symbol, period='1wk')['Close']
+
+    # Calculate the standard deviation of the stock's closing prices
+    std_dev = statistics.stdev(stock_data)
+
+    return std_dev
+
+## Call and put strike how to price? arbitrary +5/10? MUST BOTH BE OTM - RN Using 1SD
+def find_long_strangle(symbol, expiry_days, max_call_price, max_put_price):
+    expiry_date = get_expiry_date(expiry_days)
+    expiry_date_string = str(expiry_date).split()[0]
     
-    # Find the closest match for the strike price
-    calls.reset_index(inplace=True)
-    puts.reset_index(inplace=True)
-    closest_call_strike = calls['strike'].iloc[(calls['strike'] - curr_price).abs().idxmin()]
-    closest_put_strike = puts['strike'].iloc[(puts['strike'] - curr_price).abs().idxmin()]
+    try:
+        option_chain = yf.Ticker(symbol).option_chain(expiry_date_string)
+    except:
+        print(f'No options expiring on {expiry_date_string} found for {symbol}! Try another date or a different ticker symbol!')
+        return None
+
+    call_options = option_chain.calls
+    put_options = option_chain.puts
+
+    std_dev = get_weekly_std_dev(symbol)
+    call_strike = int(round(option_chain.info['previousClose'] + std_dev))
+    put_strike = int(round(option_chain.info['previousClose'] - std_dev))
+
+    # Filter out call options based on the call_strike and max_call_price
+    call_options = call_options[(call_options['strike'] == call_strike) & (call_options['lastPrice'] <= max_call_price)]
     
-    # Filter options based on the closest strike price
-    closest_call_option = calls[calls['strike'] == closest_call_strike]
-    closest_put_option = puts[puts['strike'] == closest_put_strike]
+    # Filter out put options based on the put_strike and max_put_price
+    put_options = put_options[(put_options['strike'] == put_strike) & (put_options['lastPrice'] <= max_put_price)]
 
-    res = [closest_call_option, closest_put_option]
-    
-    return res
+    # Merge call and put options DataFrames
+    long_strangle = pd.merge(call_options, put_options, on='expiration', suffixes=('_call', '_put'))
 
-#print(find_long_straddle("AAPL", 190, 6, 100))
-
-
-def find_long_strangle():
-    pass
+    return long_strangle
 
 
 def liquidity_check(symbol, option_type, expiry_days):
@@ -123,8 +135,22 @@ def liquidity_check(symbol, option_type, expiry_days):
     spread = (options['ask']-options['bid']).mean()
     return spread <= bid_ask_threshold and oi >= open_interest_threshold
 
-#print(liquidity_check("AAPL", "call"))
 
+## Can use the specific dates as well
+def why_go_through_trouble(curr_price, strike_price, iv, risk_free_rate, days_to_expiry, option_type):
+    option = Option(european=False,
+                          kind=option_type,
+                          s0=curr_price,
+                          k=strike_price,
+                          sigma=iv,
+                          r=risk_free_rate,
+                          t=days_to_expiry
+                          )
+    # BSM, MC (Monte carlo), "BT" (Binomial Tree). For MC and BT, need to give iterations
+    option_price = option.getPrice(method="BSM")
+    option_price = option.getPrice(method="MC", iteration = 500000)
+    option_price = option.getPrice(method="BT", iteration = 1000)
+    return option_price
 
 # devax(?) all values are 0 eh
 # cannot ebe option price also 0 right?
@@ -206,3 +232,27 @@ def get_expiry_date(expiry_days):
 # try_out = find_option_contract("SPY", 459, 7, 50, "call")
 # print(worth_or_not("SPY", try_out['strike'], try_out['impliedVolatility'], 7, "call"))
 
+
+
+# Should we use option price or underlying? If use underlyign need to price the option, if use option then we might keep hitting
+def fibonacci_retracement_stop_loss(entry_price_underlying, fixed_retracement_percentage = 61.8):
+    # Fibonacci retracement levels (in percentages)
+    fibonacci_levels = [23.6, 38.2, 50, 61.8, 76.4]
+
+    # Calculate the stop-loss level based on the fixed retracement percentage
+    stop_loss = entry_price_underlying - (entry_price_underlying * (fixed_retracement_percentage / 100))
+
+    return stop_loss
+
+def fibonacci_extension_take_profit(entry_price, fibonacci_extension_percentage = 161.8):
+    # Fibonacci extension levels (in percentages)
+    fibonacci_extensions = [100, 161.8, 261.8, 423.6]
+
+    # Calculate the take-profit price based on the Fibonacci extension percentage
+    take_profit = entry_price + (entry_price * (fibonacci_extension_percentage / 100))
+
+    return take_profit
+
+
+
+##### Use Option greeks to price Stop loss / Take profit? How?
