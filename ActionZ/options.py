@@ -174,16 +174,19 @@ def worth_or_not(symbol, strike_price, implied_vol, expiry_days, call_or_put):
     # earliest_date = ql.Date(15,7,2023)
     
     day_count = ql.Actual365Fixed()
-    calendar = ql.NullCalendar()
+    calendar = ql.UnitedStates()
     option_type = ql.Option.Call if call_or_put == "call" else ql.Option.Put
-    exercise_type = ql.AmericanExercise(ql.Date(), expiration_date)
+    
+    current_date = datetime.today()
+    exercise_date = ql.Date(current_date.day, current_date.month, current_date.year)
+    exercise_type = ql.AmericanExercise(exercise_date, expiration_date)
 
     payoff = ql.PlainVanillaPayoff(option_type, strike_price)
     #exercise = ql.AmericanExercise(exercise_type)
     option = ql.VanillaOption(payoff, exercise_type)
-
     spot_handle = ql.QuoteHandle(ql.SimpleQuote(float(spot_price)))
-    vol_handle = ql.BlackVolTermStructureHandle(ql.BlackConstantVol(ql.Date(), ql.NullCalendar(), float(implied_vol.iloc[0]), day_count))
+####################################################################################
+    vol_handle = ql.BlackVolTermStructureHandle(ql.BlackConstantVol(0, ql.UnitedStates(), float(implied_vol.iloc[0]), day_count))
     
     risk_free_curve = ql.YieldTermStructureHandle(
         ql.FlatForward(0, calendar, risk_free_rate, day_count)
