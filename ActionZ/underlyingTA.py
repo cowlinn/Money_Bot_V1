@@ -3,9 +3,9 @@ import ta_lib
 import talib
 import yfinance as yf
 import weights_optimisation
-import sys
-import os 
-import csv
+# import sys
+# import os 
+# import csv
 import datetime
 import underlyingTA_db
 # ALL TIMES ARE IN SINGAPORE TIME (GMT +8)
@@ -58,9 +58,22 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
     data = stock.history(period = data_period, interval = resolution) # historical price data
     data.reset_index(inplace=True) # converts datetime to a column
     data['ATR'] = talib.ATR(data['High'].to_numpy(), data['Low'].to_numpy(), data['Close'].to_numpy())
-    current_data = data.iloc[-1] 
-    current_date = str(data['Datetime'].iloc[-1]).split()[0]
-    min_samples = int(data_period[:-1]) # average of 1 trade per day?
+    current_data = data.iloc[-1]
+    if resolution[-1] == 'd':
+     current_date = str(data['Date'].iloc[-1]).split()[0]   
+    else:
+        current_date = str(data['Datetime'].iloc[-1]).split()[0]
+    index = 0
+    for i in data_period:
+        try:
+            int(i)
+            index +=1
+        except:
+            break
+    if data_period[-1] == 'd':
+        min_samples = int(data_period[:index]) # average of 1 trade per day?
+    if data_period[index:] == 'mo':
+        min_samples = 15*int(data_period[:index])
     optimisation_interval = 0.01
     if weights_optimisation.forex(stock_name) or not first or trading_hours():
         optimisation_interval = 0.05
@@ -130,13 +143,18 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         # call_file.close()
         
         # write trade actions to a db
-        dateTime = str(current_data['Datetime'])
+        if resolution[-1] == 'd':
+            dateTime = str(current_data['Date'])
+        else:
+            dateTime = str(current_data['Datetime'])
         ID = dateTime+stock_name+Type
         currentPrice = current_data['Close']
         insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
         underlyingTA_db.write_trade_actions_to_db(insert_tuple)
-        
-        calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+        if resolution[-1] == 'd':
+            calls[str(current_data['Date'])] = (current_data['Close'], stoploss, takeprofit)
+        else:
+            calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
     elif overall_signal <= -threshold:
@@ -162,13 +180,19 @@ def optimise_decision(stock_name, data_period = '4d', resolution = '15m', first 
         # put_file.close()
         
         # write trade actions to a db
-        dateTime = str(current_data['Datetime'])
+        if resolution[-1] == 'd':
+            dateTime = str(current_data['Date'])
+        else:
+            dateTime = str(current_data['Datetime'])
         ID = dateTime+stock_name+Type
         currentPrice = current_data['Close']
         insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
         underlyingTA_db.write_trade_actions_to_db(insert_tuple)
+        if resolution[-1] == 'd':
+            puts[str(current_data['Date'])] = (current_data['Close'], stoploss, takeprofit)
 
-        puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+        else:
+            puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         """"
         Assume that the stoploss/take profit is set in the broker and it will auto close the position if either one is hit
@@ -194,7 +218,10 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
     data.reset_index(inplace=True) # converts datetime to a column
     data['ATR'] = talib.ATR(data['High'].to_numpy(), data['Low'].to_numpy(), data['Close'].to_numpy())
     current_data = data.iloc[-1] 
-    current_date = str(data['Datetime'].iloc[-1]).split()[0]
+    if resolution[-1] == 'd':
+        current_date = str(data['Date'].iloc[-1]).split()[0]
+    else:
+        current_date = str(data['Datetime'].iloc[-1]).split()[0]
     
     # get optimised weights by reading from file
     if trading_hours():
@@ -240,14 +267,19 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         Execute trade here? app.buy(call)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
-        dateTime = str(current_data['Datetime'])
+        if resolution[-1] == 'd':
+            dateTime = str(current_data['Date'])  
+        else:
+            dateTime = str(current_data['Datetime'])
         ID = dateTime+stock_name+Type
         currentPrice = current_data['Close']
         insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
         underlyingTA_db.write_trade_actions_to_db(insert_tuple)
+        if resolution[-1] == 'd':
+            calls[str(current_data['Date'])] = (current_data['Close'], stoploss, takeprofit)
 
-
-        calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+        else:
+            calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         
     elif overall_signal <= -threshold:
@@ -259,13 +291,18 @@ def decision(stock_name, data_period = '4d', resolution = '15m', threshold = 0.4
         Execute trade here? app.buy(put)
         Or we can just have the optionsTA.py file read the suggested trade actions in the log file and see if got any good options?
         """
-        dateTime = str(current_data['Datetime'])
+        if resolution[-1] == 'd':
+            dateTime = str(current_data['Date'])
+        else:
+            dateTime = str(current_data['Datetime'])
         ID = dateTime+stock_name+Type
         currentPrice = current_data['Close']
         insert_tuple = (ID, Type, use_date, dateTime, stock_name, currentPrice, stoploss, takeprofit)
         underlyingTA_db.write_trade_actions_to_db(insert_tuple)
-
-        puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+        if resolution[-1] == 'd':
+            puts[str(current_data['Date'])] = (current_data['Close'], stoploss, takeprofit)
+        else:
+            puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
 
         """"
         Assume that the stoploss/take profit is set in the broker and it will auto close the position if either one is hit

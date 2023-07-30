@@ -98,13 +98,19 @@ def backtest(data, ordered_weights, stock_name, threshold = 0.4): # ordered_weig
             # print ('Buy a call at '+str(current_data['Datetime']))
             stoploss = current_data['Close']-current_data['ATR']*1.5  #1.5 # set tighter stoploss/takeprofit
             takeprofit = current_data['Close']+current_data['ATR']*1.875  #1.875
-            calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+            try:
+                calls[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+            except:
+                calls[str(current_data['Date'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
         elif output <= -threshold:
             # print('Buy a put at '+str(current_data['Datetime']))
             stoploss = current_data['Close']+current_data['ATR']*1.5
             takeprofit = current_data['Close']-current_data['ATR']*1.875
-            puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+            try:
+                puts[str(current_data['Datetime'])] = (current_data['Close'], stoploss, takeprofit)
+            except:
+                puts[str(current_data['Date'])] = (current_data['Close'], stoploss, takeprofit)
             total_trades += 1
         
         # closing positions

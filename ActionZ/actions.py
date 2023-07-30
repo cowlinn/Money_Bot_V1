@@ -9,9 +9,11 @@ import underlyingTA
 import options
 from telegram import send_tele_message
 
+from options_decision import options_decision
 
 
 
+## we still handle the connection setup and teardown here 
 
 def connection_setup(my_ib):
     actual_connection(my_ib)
@@ -53,9 +55,11 @@ def helper_list_print(message, lst):
     for i in range(len(lst)):
         res += (f"{i}: {lst[i]}" + '\n')
     send_tele_message(res)
+
+
+
 ##TODO: check what the format of this looks like, and sell stuff that we should
-
-
+##TODO: maybe also move to options_actions
 def check_prev_positions(my_ib:IB, day_actions:dict):
     prev_positions = my_ib.positions() #a list of positions we are holdin
     open_trades = my_ib.openTrades() #this shld be all closed?
@@ -169,62 +173,6 @@ def make_trade(trade_dict, action, ticker, my_ib: IB, trade_actions:dict):
 
 
 
-# def make_option_trade(trade_dict, action, ticker, my_ib: IB, trade_actions:dict):
-#     if not trade_dict:
-#         return 
-#     for date in trade_dict:
-#         ## These prices will be the contract prices
-#         predicted_price, stoploss, take_profit = trade_dict[date]
-#         current_funds = get_liquid_funds(my_ib)
-
-#         current_price = 
-#         current_contract = options.find_option_contract(ticker, current_price, )
-#         best_contract = options.find_option_contract(ticker, predicted_price, 5, 10, "call")
-
-#         if not (options.liquidity_check(ticker, "call")):
-#             return
-        
-#         check_contract = options.worth_or_not(ticker,best_contract['strike'],best_contract['impliedVolatility'],
-#                                               5,'call')
-        
-#         if not check_contract['Option Price'] == best_contract['lastPrice']:
-#             return
-
-#         if current_funds > ( * 100): 
-#             #make the trade?
-#             #step 1: create the contract
-#             contract = create_option_contract(ticker_name=ticker)
-#             my_ib.qualifyContracts(contract)
-
-#             #step 2: create the order 
-#             #TODO: check if buy or sell? -- For options we can't sell unless margin
-#             bracket_order = create_order(my_ib,purchase_price, stoploss, take_profit, order_size=1, action="BUY")        
-            
-#             send_tele_message(f"should be doing a {action} for {ticker} with price {purchase_price}, stoploss: {stoploss}, take_profit: {take_profit}")
-#             #bracket_order = my_ib.bracketOrder(action, 20, purchase_price, take_profit, stoploss)
-#             #make the trade
-#             is_parent_trade = True
-#             for o in bracket_order:
-
-#                 trade = my_ib.placeOrder(contract, o)
-#                 my_ib.sleep(5) #general wait to gather
-#                 if is_parent_trade:
-#                     while not trade.isDone():
-#                         my_ib.waitOnUpdate()
-#                     is_parent_trade = False #only wait for the parent to go in 
-
-#                 #trade = ib.placeOrder(contract, bracket_order)
-#                 #my_ib.sleep(25)  # Sleep for a moment to allow trade executio
-#                 # Check the order status of the most recent one? (including parents?)
-#                 order_status = my_ib.trades()[-1].orderStatus 
-#                 print(f"Order status: {order_status.status} for {ticker} with action {action}")
-#                 send_tele_message(f"Order status: {order_status.status} for {ticker} with action {action}")
-
-#                 trade_key = ticker + " " + str(datetime.now)
-                
-#                 ##register the current order object inside the dictionary
-#                 trade_actions[trade_key] = trade
-
 def run_trades(my_ib, day_actions:dict, current_stocks= ['SPY', 'TSLA'] ):
     for ticker_name in current_stocks:
         print(f"checking to see if there are good trades for {ticker_name}")
@@ -241,45 +189,20 @@ def run_trades(my_ib, day_actions:dict, current_stocks= ['SPY', 'TSLA'] ):
         make_trade(call_dict, 'BUY', ticker_name, my_ib, day_actions)
         make_trade(put_dict, 'SELL', ticker_name, my_ib, day_actions)
 
-def run_option_trades(my_ib, day_actions:dict, current_stocks= ['SPY', 'TSLA'] ):
-    for ticker_name in current_stocks:
-        print(f"checking to see if there are good trades for {ticker_name}")
-        send_tele_message(f"checking to see if there are good trades for {ticker_name}")
-        decision = underlyingTA.decision(ticker_name) # it will just write a bunch of log files
-
-
-        ##TODO: check if we are alr holding a stock in current_stocks, if we are then fk it 
-
-        ##LOGIC TO EXECUTE TRADE
-        #this "trade" key is a datetime obj
-        call_dict, put_dict = decision
-
-
-        make_option_trade(call_dict, 'BUY', ticker_name, my_ib, day_actions)
-        make_option_trade(put_dict, 'SELL', ticker_name, my_ib, day_actions)
 
 
 def create_contract(ticker_name):
-    contract = Contract()
-    contract.symbol = ticker_name  # Symbol of the stock
-    contract.secType = 'STK'  # Security type: 'STK' for stock
-    contract.exchange = 'SMART'  # Exchange: 'SMART' for SmartRouting
-    contract.currency = 'USD'  # Currency
+    # contract = Contract()
+    # contract.symbol = ticker_name  # Symbol of the stock
+    # contract.secType = 'STK'  # Security type: 'STK' for stock
+    # contract.exchange = 'SMART'  # Exchange: 'SMART' for SmartRouting
+    # contract.currency = 'USD'  # Currency
 
     ##manually create a stonk, but we can use contract ig?
     contract_stock = Stock(ticker_name,'SMART', 'USD')
     return contract_stock
+    
 
-def create_option_contract(ticker_name):
-    contract = Contract()
-    contract.symbol = ticker_name  # Symbol of the stock
-    contract.secType = 'OPT'  
-    contract.exchange = 'SMART'  # Exchange: 'SMART' for SmartRouting
-    contract.currency = 'USD'  # Currency
-
-    ##manually create an option, but we can use contract ig?
-    #contract_option = Option(ticker_name,'SMART', 'USD')
-    return contract
 
 
 ##TODO: check how to create order to buy (or short sell?)
@@ -313,5 +236,7 @@ def create_order(my_ib:IB , purchase_price, stoploss, take_profit, order_size=10
     bracket_order.parent.orderType = 'MKT'
     bracket_order.parent.transmit = True
     return bracket_order
+
+
 
 
