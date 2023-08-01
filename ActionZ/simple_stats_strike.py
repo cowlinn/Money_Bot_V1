@@ -7,7 +7,7 @@ import underlyingTA
 
 # This is a modified version of Models/simple_statistical_model.py
 # most functions are unused (because they were for data visualisation purposes and for dealing with probability distributions)
-# the ONLY function to be called here is get_strike_price()
+# the ONLY function to be called here is get_1wk_dte_option_details()
 # can just throw in a ticker name as the only required argument, by default it will return the predicted price of the underlying in a week's time, based on 4 months of historical data
 # this will be our strike price that we look for
 
@@ -90,7 +90,7 @@ def booldist(x):
         price_dist[target] = 1 - boolprob(x, target)
     return price_dist, str_price_dist
 
-def get_strike_info(stock_name, data_period='4m', resolution='1d', shift=5, useMedian = True):
+def get_strike_info(stock_name, data_period='4mo', resolution='1d', shift=5, useMedian = True):
     # stock_name = "SPY"
     # data_period = "1y"
     # resolution = "1d"
@@ -219,7 +219,7 @@ def get_1wk_dte_option_details(stock_name):
     optionType = call_or_put(stock_name)
     if optionType is None:
         return None
-    strike_info = get_strike_info(stock_name, data_period='4m', resolution='1d', shift=5, useMedian = True)
+    strike_info = get_strike_info(stock_name, data_period='4mo', resolution='1d', shift=5, useMedian = True)
     strike_interval = strike_info[1]
     latest_price = strike_info[2]
     if optionType == 'call':
