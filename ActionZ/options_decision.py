@@ -23,8 +23,8 @@ def options_decision(symbol, scamcheck = True, scam_threshold = -1.2, undervalue
     else:
         otype = 'P'
     wanted_option = options.find_option_contract(symbol, strike_price, expiry_days, max_price=50, option_type=option_type)
-    theoretical_price = options.worth_or_not(symbol, wanted_option['strike'], wanted_option['impliedVolatility'], expiry_days, option_type)['Option Price']
-    actual_price = wanted_option['lastprice'].iloc[0]
+    theoretical_price = options.why_go_through_trouble(symbol, int(wanted_option['strike'].iloc[0]), wanted_option['impliedVolatility'].iloc[0], expiry_days, option_type)
+    actual_price = wanted_option['lastPrice'].iloc[0]
     return_tuple = (symbol, formatted_expiry_date, int(wanted_option['strike'].iloc[0]), otype, 'SMART')
 
     # option 1: determine if the option is 'undervalued' by the market

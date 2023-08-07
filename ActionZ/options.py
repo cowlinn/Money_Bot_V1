@@ -137,7 +137,11 @@ def liquidity_check(symbol, option_type, expiry_days):
 
 
 ## Can use the specific dates as well
-def why_go_through_trouble(curr_price, strike_price, iv, risk_free_rate, days_to_expiry, option_type):
+def why_go_through_trouble(symbol, strike_price, iv, days_to_expiry, option_type):
+    curr_price = yf.Ticker(symbol).history(period = '1d', interval = '1m').iloc[-1]['Close']
+    ticker_symbol = "^TNX"  # Replace with the desired Treasury yield ticker symbol - this is 10 year
+    treasury_yield = yf.Ticker(ticker_symbol)
+    risk_free_rate = treasury_yield.history().iloc[-1]['Close'] / 100
     option = Option(european=False,
                           kind=option_type,
                           s0=curr_price,
@@ -147,11 +151,10 @@ def why_go_through_trouble(curr_price, strike_price, iv, risk_free_rate, days_to
                           t=days_to_expiry
                           )
     # BSM, MC (Monte carlo), "BT" (Binomial Tree). For MC and BT, need to give iterations
-    option_price = option.getPrice(method="BSM")
-    option_price = option.getPrice(method="MC", iteration = 500000)
-    option_price = option.getPrice(method="BT", iteration = 1000)
+    # option_price = option.getPrice(method="BSM")
+    option_price = option.getPrice(method="MC", iteration = 500000) # for now, just use monte carlo
+    # option_price = option.getPrice(method="BT", iteration = 1000)
     return option_price
-
 # devax(?) all values are 0 eh
 # cannot ebe option price also 0 right?
 def worth_or_not(symbol, strike_price, implied_vol, expiry_days, call_or_put):
@@ -256,6 +259,8 @@ def fibonacci_extension_take_profit(entry_price, fibonacci_extension_percentage 
 
     return take_profit
 
-
-
+"""
+try_out = find_option_contract("SPY", 449, 7, 50, "call")
+print(why_go_through_trouble('SPY', 449, try_out['impliedVolatility'].iloc[0], 7, 'call'))
+"""
 ##### Use Option greeks to price Stop loss / Take profit? How?
