@@ -5,7 +5,7 @@ from simple_stats_strike import get_1wk_dte_option_details
 def undervalued(actual_price, theoretical_price):
     return theoretical_price > actual_price
 
-def scam(actual_price, theoretical_price, threshold = -1):
+def scam(actual_price, theoretical_price, threshold = -0.5):
     return (theoretical_price-actual_price) < threshold
 
 def options_decision(symbol, scamcheck = True, scam_threshold = -1.2, undervaluecheck = False, date = 'normal options date'):
@@ -23,6 +23,9 @@ def options_decision(symbol, scamcheck = True, scam_threshold = -1.2, undervalue
     else:
         otype = 'P'
     wanted_option = options.find_option_contract(symbol, strike_price, expiry_days, max_price=50, option_type=option_type)
+    if wanted_option is None:
+        print('No closest contract available, try another date or a different ticker symbol!')
+        return
     theoretical_price = options.why_go_through_trouble(symbol, int(wanted_option['strike'].iloc[0]), wanted_option['impliedVolatility'].iloc[0], expiry_days, option_type)
     actual_price = wanted_option['lastPrice'].iloc[0]
     return_tuple = (symbol, formatted_expiry_date, int(wanted_option['strike'].iloc[0]), otype, 'SMART')
@@ -30,7 +33,7 @@ def options_decision(symbol, scamcheck = True, scam_threshold = -1.2, undervalue
     # option 1: determine if the option is 'undervalued' by the market
     # option 2: just don't get scamemd, simply check if the pricing of the option is close enough
     if scamcheck and scam(actual_price, theoretical_price):
-        print('Watch out! this option might be a scam!')
+        print('Watch out! This option might be a scam!')
         return None
     if not options.liquidity_check(symbol, option_type, expiry_days): # always check liquidity to avoid losing to bid-ask spread
         print('Not enough liquidity!')
