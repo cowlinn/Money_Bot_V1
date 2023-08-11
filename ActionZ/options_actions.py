@@ -5,6 +5,7 @@ from options_decision import options_decision
 from telegram import send_tele_message
 
 
+
 def run_option_trades(my_ib, day_actions:dict, current_stocks= ['SPY', 'TSLA']):
     """
     this function is the main entry point into the prog \n 
@@ -63,6 +64,8 @@ def create_options_order(my_ib:IB, action='BUY'):
     """
     ## switched to options 
     my_order = MarketOrder(action, 2)
+
+    #need to auto transmit
     my_order.transmit = True
     return my_order
 
