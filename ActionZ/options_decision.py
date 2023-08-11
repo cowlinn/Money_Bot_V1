@@ -1,5 +1,7 @@
 import options
 from simple_stats_strike import get_1wk_dte_option_details
+import pytz
+from datetime import datetime, timedelta
 
 
 def undervalued(actual_price, theoretical_price):
@@ -50,3 +52,49 @@ def options_decision(symbol, scamcheck = True, scam_threshold = -1.2, undervalue
     
     # return wanted_option['contractSymbol'].iloc[0]
     return return_tuple
+
+# TODO: log options trades in db
+
+def close_position(symbol:str, profit_threshold = 1.3, max_hold_days = 3):
+    """
+    checks if the wanted contract is sellable
+    
+    symbol:str is the ticker symbol
+    max_hold_days:int is the hard limit on how many days we hold a contract
+    profit_threshold:float is the desired profit level
+    
+    returns a list of GUIDs for option contracts to sell
+    """
+    # assume that option trades are logged in db, with GUID {symbol}{expiry_date}{strike_price}
+    # the table will contain {symbol}    {option_type}    {actual_buying_price}    {date_of_purchase}
+
+    # first, read the db by {symbol} to see if any options for a given ticker have profit of 30%
+    
+    # add all the GUID for a given symbol to a list
+    guid_list = []
+    sell_list = []
+    # iterate through the list and look up the current price for each option and see if the option meets the profit threshold
+    symlen = len(symbol)
+    us_timezone = pytz.timezone('America/New_York')
+    us_time =  datetime.now(us_timezone)
+    for i in guid_list:
+        expiry_date_str = i[symlen:(symlen+10)]
+        exp_date = datetime(int(expiry_date_str[:4]), int(expiry_date_str[5:7]), int(expiry_date_str[8:]), 12, 0, 0, 0, us_timezone)
+        strike_price = i[symlen+10:] # do we even need this
+        date_of_purchase = 0 # PLACEHOLDER, store the datetime obj in sqlite db and read directly
+        actual_buying_price = 0 # PLACEHOLDER, TODO
+        option_type = 'call' # PLACEHOLDER, ALSO NEED TO READ FROM DB
+        
+        days_held = int(str(us_time - date_of_purchase).split()[0]) # might not work properly
+        current_days_to_expiry = int(str(exp_date - us_time).split()[0])
+        current_price = options.find_option_contract(symbol, strike_price, current_days_to_expiry, 50, option_type)['lastPrice'].iloc[0]
+        
+        # first we check if it's too close to expiring
+        if days_held <= max_hold_days:
+            sell_list.append(i)
+        # then we check if the profit target is met
+        elif current_price/actual_buying_price > profit_threshold:
+            sell_list.append(i)
+    # ID = symbol + str(expiry_date) + str(strike_price)
+    return sell_list
+    
