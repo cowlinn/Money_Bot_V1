@@ -1,7 +1,8 @@
 import options
 from simple_stats_strike import get_1wk_dte_option_details
 import pytz
-from datetime import datetime, timedelta
+from datetime import datetime
+import options_db
 
 
 def undervalued(actual_price, theoretical_price):
@@ -51,8 +52,21 @@ def options_decision(symbol, scamcheck = True, scam_threshold = -1.2, undervalue
             return None
     
     # return wanted_option['contractSymbol'].iloc[0]
+    
+    # write the trade to db? but we dk if the order was really filled at this stage
+    try:
+        ID = symbol + str(options.get_expiry_date(expiry_days)).split()[0] + otype + str(int(wanted_option['strike'].iloc[0]))
+        us_date_now =  str(datetime.now(pytz.timezone('America/New_York'))).split()[0]
+        # cannot get buying price yet? maybe should do this after the trade has been made? but then we need to get all the requred info from ibkr
+        insert_tuple = (ID, symbol, otype, buyingPrice, us_date_now)
+        options_db.write_options_trade_to_db(insert_tuple)
+    except:
+        print('db devax, probably no buyingPrice!')
     return return_tuple
 
+def dateString_to_datetime(dateString:str):
+    us_timezone = pytz.timezone('America/New_York')
+    return datetime(int(dateString[:4]), int(dateString[5:7]), int(dateString[8:]), 12, 0, 0, 0, us_timezone)
 # TODO: log options trades in db
 
 def close_position(symbol:str, profit_threshold = 1.3, max_hold_days = 3):
@@ -69,32 +83,43 @@ def close_position(symbol:str, profit_threshold = 1.3, max_hold_days = 3):
     # the table will contain {symbol}    {option_type}    {actual_buying_price}    {date_of_purchase}
 
     # first, read the db by {symbol} to see if any options for a given ticker have profit of 30%
-    
+    held_options = options_db.read_options_trade_from_db_by_symbol(symbol)
     # add all the GUID for a given symbol to a list
-    guid_list = []
     sell_list = []
-    # iterate through the list and look up the current price for each option and see if the option meets the profit threshold
     symlen = len(symbol)
     us_timezone = pytz.timezone('America/New_York')
     us_time =  datetime.now(us_timezone)
-    for i in guid_list:
-        expiry_date_str = i[symlen:(symlen+10)]
-        exp_date = datetime(int(expiry_date_str[:4]), int(expiry_date_str[5:7]), int(expiry_date_str[8:]), 12, 0, 0, 0, us_timezone)
-        strike_price = i[symlen+10:] # do we even need this
-        date_of_purchase = 0 # PLACEHOLDER, store the datetime obj in sqlite db and read directly
-        actual_buying_price = 0 # PLACEHOLDER, TODO
-        option_type = 'call' # PLACEHOLDER, ALSO NEED TO READ FROM DB
+    for option in held_options:
+        ID = option[0]
+        expiry_date_str = ID[symlen:(symlen+10)]
+        exp_date = dateString_to_datetime(expiry_date_str)
+        strike_price = int(ID[symlen+11:])
+        date_of_purchase_str = option[4]
+        actual_buying_price = option[3]
+        option_type = option[2]
+        if option_type.upper() == 'C':
+            option_type = 'call'
+        elif option_type.upper() == 'P':
+            option_type = 'put'
         
-        days_held = int(str(us_time - date_of_purchase).split()[0]) # might not work properly
+        date_of_purchase = dateString_to_datetime(date_of_purchase_str)
+        try:
+            days_held = int(str(us_time - date_of_purchase).split()[0]) # might not work properly
+        except:
+            if int(str(us_time - date_of_purchase)[:2]) >=12:
+                days_held = 1
+            else:
+                days_held = 0
         current_days_to_expiry = int(str(exp_date - us_time).split()[0])
         current_price = options.find_option_contract(symbol, strike_price, current_days_to_expiry, 50, option_type)['lastPrice'].iloc[0]
         
         # first we check if it's too close to expiring
         if days_held <= max_hold_days:
-            sell_list.append(i)
+            sell_list.append(ID)
         # then we check if the profit target is met
         elif current_price/actual_buying_price > profit_threshold:
-            sell_list.append(i)
-    # ID = symbol + str(expiry_date) + str(strike_price)
-    return sell_list
+            sell_list.append(ID)
+    # ID = symbol + str(expiry_date) + optionType+str(strike_price)
+    # optionType is 'C' or 'P'
+    return sell_list # need to remove from db if the position was closed successfully
     

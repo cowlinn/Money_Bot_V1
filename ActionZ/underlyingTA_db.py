@@ -126,7 +126,7 @@ def read_trade_actions_from_db(ID = None, ticker = None, date = None, Type = Non
         output_list.append(output)
 
     conn.close()
-    return output # returns a usable list of floats for weights to be applied
+    return output_list # returns a usable list of floats for weights to be applied
 
 # to delete an entry from weights
 def delete_trade_actions_from_db_by_id(ID): # ID must be a tuple! 
